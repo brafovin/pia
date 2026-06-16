@@ -2,75 +2,98 @@
 import random
 import time
 import os
+import subprocess
 
 def clear():
     os.system('clear' if os.name == 'posix' else 'cls')
 
-DOGS = [
-    {"name": "Chihuahua",   "hp": 15,  "atk": 3,  "xp": 10, "emoji": "🐕"},
-    {"name": "Pudel",       "hp": 25,  "atk": 6,  "xp": 20, "emoji": "🐩"},
-    {"name": "Schäferhund", "hp": 40,  "atk": 10, "xp": 35, "emoji": "🐺"},
-    {"name": "Rottweiler",  "hp": 60,  "atk": 15, "xp": 55, "emoji": "🦮"},
-    {"name": "Höllenhund",  "hp": 100, "atk": 22, "xp": 100,"emoji": "👹"},
+def play_sound_67():
+    # "67" sound effect on win
+    try:
+        subprocess.Popen(
+            ["ffplay", "-nodisp", "-autoexit", "-f", "lavfi",
+             "-i", "sine=frequency=67:duration=0.6"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+    except FileNotFoundError:
+        print("\a", end="", flush=True)
+
+PLAYER_DOGS = [
+    {"name": "Chihuahua",   "hp": 60,  "atk": 8,  "emoji": "🐕", "special": "Zittern",    "special_dmg": (18, 28)},
+    {"name": "Pudel",       "hp": 80,  "atk": 10, "emoji": "🐩", "special": "Fell-Wirbel", "special_dmg": (22, 32)},
+    {"name": "Schäferhund", "hp": 100, "atk": 13, "emoji": "🐺", "special": "Rudel-Biss",  "special_dmg": (28, 40)},
+    {"name": "Rottweiler",  "hp": 120, "atk": 16, "emoji": "🦮", "special": "Ramme",        "special_dmg": (35, 50)},
+]
+
+ENEMY_DOGS = [
+    {"name": "Dackel",      "hp": 20,  "atk": 4,  "xp": 10, "emoji": "🌭"},
+    {"name": "Mops",        "hp": 35,  "atk": 7,  "xp": 20, "emoji": "🐶"},
+    {"name": "Husky",       "hp": 55,  "atk": 11, "xp": 35, "emoji": "🐕‍🦺"},
+    {"name": "Dobermann",   "hp": 75,  "atk": 16, "xp": 55, "emoji": "🦴"},
+    {"name": "Höllenhund",  "hp": 120, "atk": 24, "xp": 100,"emoji": "👹"},
 ]
 
 MOVES = {
-    "1": {"name": "Faustschlag",    "dmg": (8, 15),  "cost": 0,  "desc": "Ein schneller Schlag"},
-    "2": {"name": "Tritt",          "dmg": (12, 20), "cost": 10, "desc": "Tritt mit voller Kraft"},
-    "3": {"name": "Spezialangriff", "dmg": (20, 35), "cost": 25, "desc": "Mächtiger Angriff"},
-    "4": {"name": "Heilen",         "dmg": (0, 0),   "cost": 20, "desc": "Heilt 20 HP"},
+    "1": {"name": "Bellen",        "dmg": (6, 12),  "cost": 0,  "desc": "Schneller Angriff"},
+    "2": {"name": "Beißen",        "dmg": (12, 20), "cost": 10, "desc": "Fester Biss"},
+    "3": {"name": "Spezial",       "dmg": None,     "cost": 25, "desc": "Spezialangriff deiner Rasse"},
+    "4": {"name": "Lecken",        "dmg": (0, 0),   "cost": 20, "desc": "Heilt 20 HP"},
 }
 
 def bar(val, max_val, length=20, char="█"):
     filled = int(length * val / max_val)
     return char * filled + "░" * (length - filled)
 
-def print_status(player, dog):
-    print("─" * 50)
-    print(f"  👤 {player['name']:<15} HP: [{bar(player['hp'], player['max_hp'])}] {player['hp']}/{player['max_hp']}")
-    print(f"     Juwelen: [{bar(player['stamina'], 100)}] {player['stamina']}/100  |  Level {player['level']}  XP: {player['xp']}/{player['xp_next']}")
-    print("─" * 50)
-    print(f"  {dog['emoji']} {dog['name']:<15} HP: [{bar(dog['hp'], dog['max_hp'])}] {dog['hp']}/{dog['max_hp']}")
-    print("─" * 50)
+def print_status(player, enemy):
+    print("─" * 52)
+    print(f"  {player['emoji']} {player['name']:<14} HP: [{bar(player['hp'], player['max_hp'])}] {player['hp']}/{player['max_hp']}")
+    print(f"     Juwelen: [{bar(player['stamina'], 100, 14)}] {player['stamina']}/100  |  Lvl {player['level']}  XP: {player['xp']}/{player['xp_next']}")
+    print("─" * 52)
+    print(f"  {enemy['emoji']} {enemy['name']:<14} HP: [{bar(enemy['hp'], enemy['max_hp'])}] {enemy['hp']}/{enemy['max_hp']}")
+    print("─" * 52)
 
 def print_moves(player):
-    print("\n  Was tust du?")
+    print("\n  Was tut dein Hund?")
     for key, move in MOVES.items():
         cost = f"  [{move['cost']} Juwelen]" if move['cost'] > 0 else ""
-        print(f"  [{key}] {move['name']:<18} {move['desc']}{cost}")
+        desc = move['desc']
+        if key == "3":
+            desc = player['special']
+        print(f"  [{key}] {move['name']:<16} {desc}{cost}")
     print(f"  [5] Fliehen")
 
 def level_up(player):
     player['level'] += 1
     player['xp_next'] = int(player['xp_next'] * 1.5)
-    player['max_hp'] += 15
+    player['max_hp'] += 20
     player['hp'] = player['max_hp']
     player['stamina'] = 100
-    print(f"\n  ⭐ LEVEL UP! Du bist jetzt Level {player['level']}!")
-    print(f"  Max HP erhöht auf {player['max_hp']}!")
+    player['atk'] += 2
+    print(f"\n  ⭐ LEVEL UP! {player['name']} ist jetzt Level {player['level']}!")
+    print(f"  Max HP: {player['max_hp']}  |  Angriff: {player['atk']}")
     time.sleep(1.5)
 
-def spawn_dog(player):
-    tier = min(player['level'] - 1, len(DOGS) - 1)
-    base = random.choice(DOGS[:tier + 1])
-    scale = 1 + (player['level'] - 1) * 0.1
-    dog = {
+def spawn_enemy(player):
+    tier = min(player['level'] - 1, len(ENEMY_DOGS) - 1)
+    base = random.choice(ENEMY_DOGS[:tier + 1])
+    scale = 1 + (player['level'] - 1) * 0.12
+    enemy = {
         "name": base["name"],
         "emoji": base["emoji"],
         "hp": int(base["hp"] * scale),
         "atk": int(base["atk"] * scale),
         "xp": int(base["xp"] * scale),
     }
-    dog["max_hp"] = dog["hp"]
-    return dog
+    enemy["max_hp"] = enemy["hp"]
+    return enemy
 
-def fight(player, dog):
+def fight(player, enemy):
     log = []
     fled = False
 
-    while player['hp'] > 0 and dog['hp'] > 0:
+    while player['hp'] > 0 and enemy['hp'] > 0:
         clear()
-        print_status(player, dog)
+        print_status(player, enemy)
         if log:
             print()
             for line in log[-3:]:
@@ -96,79 +119,105 @@ def fight(player, dog):
                 if choice == "4":
                     heal = 20
                     player['hp'] = min(player['max_hp'], player['hp'] + heal)
-                    log.append(f"Du heilst dich um {heal} HP!")
+                    log.append(f"{player['name']} leckt seine Wunden und heilt {heal} HP!")
                 else:
-                    dmg = random.randint(*move['dmg'])
+                    if choice == "3":
+                        dmg = random.randint(*player['special_dmg'])
+                    else:
+                        dmg = random.randint(*move['dmg'])
+                        dmg += player['atk'] // 3
                     if random.random() < 0.15:
                         dmg = int(dmg * 1.5)
                         log.append(f"💥 KRITISCHER TREFFER!")
-                    dog['hp'] = max(0, dog['hp'] - dmg)
-                    log.append(f"Du setzt {move['name']} ein und triffst für {dmg} Schaden!")
+                    enemy['hp'] = max(0, enemy['hp'] - dmg)
+                    move_name = player['special'] if choice == "3" else move['name']
+                    log.append(f"{player['name']} setzt {move_name} ein — {dmg} Schaden!")
         else:
             log.append("Ungültige Eingabe!")
             continue
 
-        if dog['hp'] <= 0:
+        if enemy['hp'] <= 0:
             break
 
-        dog_dmg = random.randint(int(dog['atk'] * 0.7), int(dog['atk'] * 1.3))
-        player['hp'] = max(0, player['hp'] - dog_dmg)
+        enemy_dmg = random.randint(int(enemy['atk'] * 0.7), int(enemy['atk'] * 1.3))
+        player['hp'] = max(0, player['hp'] - enemy_dmg)
         player['stamina'] = min(100, player['stamina'] + 15)
-        log.append(f"Der {dog['name']} greift an und trifft für {dog_dmg} Schaden!")
+        log.append(f"{enemy['emoji']} {enemy['name']} greift an — {enemy_dmg} Schaden!")
 
     return fled
 
+def choose_dog():
+    clear()
+    print("=" * 52)
+    print("        🐾 WÄHLE DEINEN HUND 🐾")
+    print("=" * 52)
+    for i, d in enumerate(PLAYER_DOGS, 1):
+        print(f"  [{i}] {d['emoji']} {d['name']:<14} HP: {d['hp']}  ATK: {d['atk']}  Spezial: {d['special']}")
+    print()
+    while True:
+        choice = input("  > ").strip()
+        if choice in [str(i) for i in range(1, len(PLAYER_DOGS) + 1)]:
+            return PLAYER_DOGS[int(choice) - 1]
+        print("  Ungültige Wahl!")
+
 def main():
     clear()
-    print("=" * 50)
-    print("       🐾 HUNDEKAMPF ARENA 🐾")
-    print("=" * 50)
-    name = input("\n  Dein Name, Kämpfer: ").strip() or "Held"
+    print("=" * 52)
+    print("       🐾 HUNDE KAMPF ARENA 🐾")
+    print("=" * 52)
+
+    base = choose_dog()
 
     player = {
-        "name": name,
-        "hp": 100,
-        "max_hp": 100,
+        "name": base["name"],
+        "emoji": base["emoji"],
+        "hp": base["hp"],
+        "max_hp": base["hp"],
+        "atk": base["atk"],
         "stamina": 100,
+        "special": base["special"],
+        "special_dmg": base["special_dmg"],
         "level": 1,
         "xp": 0,
         "xp_next": 50,
         "kills": 0,
     }
 
-    print(f"\n  Willkommen, {name}! Besiege alle Hunde!\n")
+    clear()
+    print(f"\n  {player['emoji']} {player['name']} betritt die Arena! Besiege alle Hunde!\n")
     time.sleep(1.5)
 
     while player['hp'] > 0:
-        dog = spawn_dog(player)
+        enemy = spawn_enemy(player)
         clear()
-        print(f"\n  Ein {dog['emoji']} {dog['name']} erscheint!\n")
+        print(f"\n  {enemy['emoji']} Ein {enemy['name']} erscheint und bellt dich an!\n")
         time.sleep(1)
 
-        fled = fight(player, dog)
+        fled = fight(player, enemy)
 
         if player['hp'] <= 0:
             clear()
-            print("=" * 50)
-            print(f"  💀 Du wurdest besiegt!")
+            print("=" * 52)
+            print(f"  💀 {player['name']} wurde besiegt!")
             print(f"  Besiegte Hunde: {player['kills']}")
             print(f"  Erreichtes Level: {player['level']}")
-            print("=" * 50)
+            print("=" * 52)
             break
 
         if fled:
             clear()
-            print(f"\n  Du bist geflohen! Erhole dich...\n")
+            print(f"\n  {player['emoji']} {player['name']} flieht! Erholung...\n")
             player['hp'] = min(player['max_hp'], player['hp'] + 10)
             time.sleep(1.5)
             continue
 
-        if dog['hp'] <= 0:
+        if enemy['hp'] <= 0:
             player['kills'] += 1
-            player['xp'] += dog['xp']
+            player['xp'] += enemy['xp']
             clear()
-            print(f"\n  ✅ {dog['name']} besiegt! +{dog['xp']} XP\n")
-            time.sleep(1)
+            play_sound_67()
+            print(f"\n  🎉 {enemy['name']} besiegt! +{enemy['xp']} XP  🔊 *67*\n")
+            time.sleep(1.2)
 
             if player['xp'] >= player['xp_next']:
                 player['xp'] -= player['xp_next']
@@ -177,10 +226,10 @@ def main():
             if player['kills'] % 3 == 0:
                 bonus = 20
                 player['hp'] = min(player['max_hp'], player['hp'] + bonus)
-                print(f"  🏆 Bonus! +{bonus} HP für je 3 Siege!")
+                print(f"  🏆 3 Siege Bonus! +{bonus} HP!")
                 time.sleep(1)
 
-    print("\n  Spiel beendet. Auf Wiedersehen!\n")
+    print("\n  Spiel beendet. Wuff!\n")
 
 if __name__ == "__main__":
     main()
