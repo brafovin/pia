@@ -15,34 +15,39 @@ AMMO_REGEN = 3   # Züge bis 1 Ammo regeneriert
 
 BRAWLERS = [
     {
-        "name": "Shelly",   "emoji": "🔫", "hp": 5200, "dmg": 900,
-        "super_name": "Schrotflinte",
-        "super_dmg": 2800, "super_range": 3, "super_splash": True,
-        "range": 5, "desc": "Breiter Nahkampf-Schuss, Super trifft alle in der Linie"
+        "name": "Shelly",   "emoji": "🔫", "hp": 5200, "dmg": 800,
+        "super_name": "Schild-Wand",
+        "range": 5,
+        "desc": "Normaler Schuss. Super: Baut eine temporäre Mauer auf einem Feld (3 Runden)",
+        "super_type": "wall",
     },
     {
-        "name": "Colt",     "emoji": "🤠", "hp": 3600, "dmg": 700,
-        "super_name": "Kugelhagel",
-        "super_dmg": 4200, "super_range": 8, "super_splash": False,
-        "range": 7, "desc": "Langer Schuss, Super schießt 6 Kugeln weit"
+        "name": "Colt",     "emoji": "🤠", "hp": 3600, "dmg": 650,
+        "super_name": "Teleport-Schuss",
+        "range": 7,
+        "desc": "Präziser Schuss. Super: Teleportiert zu einem Zielfeld und schießt sofort",
+        "super_type": "teleport",
     },
     {
-        "name": "Bull",     "emoji": "🐂", "hp": 6000, "dmg": 1400,
-        "super_name": "Stampede",
-        "super_dmg": 0, "super_range": 5, "super_splash": False,
-        "range": 3, "desc": "Nahkampf-Tank, Super lädt durch und betäubt"
+        "name": "Bull",     "emoji": "🐂", "hp": 6500, "dmg": 1600,
+        "super_name": "Berserker",
+        "range": 2,
+        "desc": "Nahkampf-Tank. Super: Verdoppelt Schaden für 3 Runden, kann nicht betäubt werden",
+        "super_type": "berserk",
     },
     {
-        "name": "Poco",     "emoji": "🎸", "hp": 4200, "dmg": 600,
-        "super_name": "Heilsong",
-        "super_dmg": -2000, "super_range": 0, "super_splash": False,
-        "range": 6, "desc": "Heilt Team mit Super, guter Support"
+        "name": "Poco",     "emoji": "🎸", "hp": 4000, "dmg": 500,
+        "super_name": "Gem-Diebstahl",
+        "range": 5,
+        "desc": "Schwacher Schuss. Super: Stiehlt 3 Gems vom nächsten Gegner",
+        "super_type": "steal",
     },
     {
-        "name": "Brock",    "emoji": "🚀", "hp": 3200, "dmg": 1000,
-        "super_name": "Raketenhagel",
-        "super_dmg": 1600, "super_range": 9, "super_splash": True,
-        "range": 8, "desc": "Sniper mit Raketen, Super zerstört Gebiet"
+        "name": "Brock",    "emoji": "🚀", "hp": 3000, "dmg": 950,
+        "super_name": "Zeitbombe",
+        "range": 9,
+        "desc": "Sniper. Super: Legt Bombe auf Feld — explodiert nächste Runde für 4000 Schaden (Radius 1)",
+        "super_type": "bomb",
     },
 ]
 
@@ -63,8 +68,10 @@ def dist(a, b):
 def in_bounds(r, c):
     return 0 <= r < ROWS and 0 <= c < COLS
 
+_temp_walls_ref = {}
+
 def is_wall(r, c):
-    return (r, c) in WALLS
+    return (r, c) in WALLS or (r, c) in _temp_walls_ref
 
 def make_entity(brawler, pos, team):
     e = dict(brawler)
@@ -77,29 +84,37 @@ def make_entity(brawler, pos, team):
     e['stunned'] = 0
     e['gems'] = 0
     e['alive'] = True
+    e['berserk_turns'] = 0   # Bull Super
     return e
 
-def draw_arena(entities, gems, dropped_gems):
+def draw_arena(entities, gems, dropped_gems, temp_walls=None, bombs=None):
+    temp_walls = temp_walls or {}
+    bombs = bombs or []
     grid = [["  " for _ in range(COLS)] for _ in range(ROWS)]
 
-    # Wände
     for (wr, wc) in WALLS:
         grid[wr][wc] = "██"
+    for (wr, wc) in temp_walls:
+        grid[wr][wc] = "🧱"
+    for b in bombs:
+        br, bc = b['pos']
+        if in_bounds(br, bc):
+            grid[br][bc] = "💣"
 
-    # Gems
     for (gr, gc) in gems:
         grid[gr][gc] = "💎"
     for (gr, gc) in dropped_gems:
         grid[gr][gc] = "✨"
 
-    # Entities
     for e in entities:
         if e['alive']:
             r, c = e['pos']
             color = "\033[94m" if e['team'] == 'blue' else "\033[91m"
-            grid[r][c] = color + e['emoji'] + "\033[0m"
+            icon = e['emoji']
+            if e.get('berserk_turns', 0) > 0:
+                icon = "🔥"
+            grid[r][c] = color + icon + "\033[0m"
 
-    # Gem-Mine (Mitte)
     mr, mc = ROWS//2, COLS//2
     if grid[mr][mc] == "  ":
         grid[mr][mc] = "⛏ "
@@ -133,6 +148,8 @@ def shoot(shooter, target_pos, all_entities, splash=False, dmg_override=None, ra
     sr, sc = shooter['pos']
     tr, tc = target_pos
     dmg = dmg_override if dmg_override is not None else shooter['dmg']
+    if shooter.get('berserk_turns', 0) > 0:
+        dmg *= 2
     rng = range_override if range_override is not None else shooter['range']
     d = dist(shooter['pos'], target_pos)
 
@@ -168,52 +185,88 @@ def shoot(shooter, target_pos, all_entities, splash=False, dmg_override=None, ra
         shooter['super_charge'] = min(100, shooter['super_charge'] + 25)
     return hit, " | ".join(log) if log else "Verfehlt!"
 
-def use_super(player, all_entities, enemies, gems):
+def ask_target(prompt="  Zielfeld (Reihe Spalte): "):
+    while True:
+        raw = input(prompt).strip().split()
+        try:
+            return int(raw[0])-1, int(raw[1])-1
+        except:
+            print("  Ungültig! Format: Reihe Spalte (z.B. 3 5)")
+
+def use_super(player, all_entities, enemies, gems, temp_walls, bombs):
     sname = player['super_name']
+    stype = player.get('super_type', '')
     log = []
 
-    if player['name'] == "Poco":
-        heal = abs(player['super_dmg'])
-        player['hp'] = min(player['max_hp'], player['hp'] + heal)
-        log.append(f"🎸 {sname}! Heilt {heal} HP!")
-        player['super_charge'] = 0
-        return log
-
-    if player['name'] == "Bull":
-        # Stampede: bewegt sich 3 Felder vorwärts und betäubt
-        dr = 0
-        dc = 1 if player['pos'][1] < COLS//2 else -1
-        for _ in range(5):
-            nr, nc = player['pos'][0]+dr, player['pos'][1]+dc
-            if not in_bounds(nr, nc) or is_wall(nr, nc):
-                break
-            player['pos'] = [nr, nc]
-            for e in enemies:
-                if e['alive'] and e['pos'] == [nr, nc]:
-                    e['hp'] -= 2000
-                    e['stunned'] = 2
-                    log.append(f"🐂 Rammte {e['name']} für 2000! Betäubt!")
-                    if e['hp'] <= 0:
-                        e['alive'] = False
-                        log.append(f"💀 {e['name']} ausgeschaltet!")
-        player['super_charge'] = 0
-        return log
-
-    # Andere Supers: Wähle Zielrichtung
-    print(f"\n  ⚡ SUPER: {sname}! Zielfeld eingeben (Reihe Spalte):")
-    while True:
-        raw = input("  > ").strip().split()
-        try:
-            tr, tc = int(raw[0])-1, int(raw[1])-1
+    # ── Shelly: Schild-Wand ──────────────────────────────────────────
+    if stype == "wall":
+        print(f"\n  🧱 SUPER: {sname}! Wo soll die Mauer erscheinen? (leeres Feld)")
+        while True:
+            tr, tc = ask_target()
+            if not in_bounds(tr, tc):
+                print("  Außerhalb der Arena!")
+                continue
+            if is_wall(tr, tc) or (tr, tc) in temp_walls:
+                print("  Dort ist schon eine Mauer!")
+                continue
+            occupied = any(e['alive'] and e['pos']==[tr,tc] for e in all_entities)
+            if occupied:
+                print("  Ein Brawler steht dort!")
+                continue
             break
-        except:
-            print("  Ungültig!")
+        temp_walls[(tr, tc)] = 3
+        log.append(f"🧱 Mauer bei {tr+1},{tc+1} errichtet! (3 Runden)")
 
-    _, msg = shoot(player, [tr, tc], all_entities,
-                   splash=player['super_splash'],
-                   dmg_override=player['super_dmg'],
-                   range_override=player['super_range'])
-    log.append(f"⚡ {sname}! {msg}")
+    # ── Colt: Teleport-Schuss ────────────────────────────────────────
+    elif stype == "teleport":
+        print(f"\n  ⚡ SUPER: {sname}! Wohin teleportieren? (leeres Feld)")
+        while True:
+            tr, tc = ask_target()
+            if not in_bounds(tr, tc):
+                print("  Außerhalb!")
+                continue
+            if is_wall(tr, tc) or (tr, tc) in temp_walls:
+                print("  Blockiert!")
+                continue
+            occupied = any(e['alive'] and e['pos']==[tr,tc] for e in all_entities)
+            if occupied:
+                print("  Besetzt!")
+                continue
+            break
+        player['pos'] = [tr, tc]
+        log.append(f"⚡ Teleportiert nach {tr+1},{tc+1}!")
+        print(f"  Jetzt schießen! Zielfeld:")
+        sr, sc = ask_target()
+        hit, msg = shoot(player, [sr, sc], all_entities, range_override=COLS)
+        log.append(f"🔫 Sofortschuss → {msg}")
+
+    # ── Bull: Berserker ──────────────────────────────────────────────
+    elif stype == "berserk":
+        player['berserk_turns'] = 3
+        log.append(f"🐂 BERSERKER! Doppelschaden für 3 Runden! Unaufhaltbar!")
+
+    # ── Poco: Gem-Diebstahl ──────────────────────────────────────────
+    elif stype == "steal":
+        alive_enemies = [e for e in enemies if e['alive'] and e['gems'] > 0]
+        if not alive_enemies:
+            log.append(f"🎸 Kein Gegner hat Gems zum Stehlen!")
+        else:
+            target = min(alive_enemies, key=lambda e: dist(player['pos'], e['pos']))
+            stolen = min(3, target['gems'])
+            target['gems'] -= stolen
+            player['gems'] += stolen
+            log.append(f"🎸 {stolen} Gems von {target['name']} gestohlen! 💎×{stolen}")
+
+    # ── Brock: Zeitbombe ─────────────────────────────────────────────
+    elif stype == "bomb":
+        print(f"\n  💣 SUPER: {sname}! Wo soll die Bombe landen?")
+        tr, tc = ask_target()
+        if in_bounds(tr, tc):
+            bombs.append({'pos': [tr, tc], 'timer': 1, 'dmg': 4000, 'radius': 1})
+            log.append(f"💣 Bombe bei {tr+1},{tc+1} platziert! Explodiert nächste Runde!")
+        else:
+            log.append("Ziel außerhalb!")
+
     player['super_charge'] = 0
     return log
 
@@ -280,11 +333,12 @@ def ai_move(enemy, player, gems, all_entities, dropped_gems, log):
                 enemy['pos'] = [nr, nc]
                 break
 
-def player_turn(player, enemies, gems, dropped_gems, all_entities):
+def player_turn(player, enemies, gems, dropped_gems, all_entities, temp_walls, bombs):
     log_lines = []
+    berserk_str = f"  🔥 BERSERKER noch {player['berserk_turns']} Runden!" if player.get('berserk_turns',0)>0 else ""
     print("\n  STEUERUNG:")
     print("  [w/a/s/d] Bewegen  [f Reihe Spalte] Schießen  [q] Super  [skip] Aussetzen")
-    print(f"  Ammo: {'🔵'*player['ammo']}{'⚫'*(MAX_AMMO-player['ammo'])}  |  Pos: {player['pos'][0]+1},{player['pos'][1]+1}")
+    print(f"  Ammo: {'🔵'*player['ammo']}{'⚫'*(MAX_AMMO-player['ammo'])}  |  Pos: {player['pos'][0]+1},{player['pos'][1]+1}{berserk_str}")
 
     while True:
         raw = input("  > ").strip().lower()
@@ -346,7 +400,7 @@ def player_turn(player, enemies, gems, dropped_gems, all_entities):
             if player['super_charge'] < 100:
                 print(f"  Super noch nicht bereit! ({player['super_charge']}%)")
                 continue
-            msgs = use_super(player, all_entities, enemies, gems)
+            msgs = use_super(player, all_entities, enemies, gems, temp_walls, bombs)
             log_lines.extend(msgs)
             break
 
@@ -390,28 +444,64 @@ def main():
 
     gems = set()
     dropped_gems = set()
+    temp_walls = {}   # (r,c) -> turns_remaining
+    bombs = []        # [{'pos':[], 'timer':int, 'dmg':int, 'radius':int}]
     spawn_gems(gems, 3)
 
+    # Globale temp_walls Referenz für is_wall()
+    global _temp_walls_ref
+    _temp_walls_ref = temp_walls
+
     round_num = 0
-    respawn_timer = {}
 
     while True:
         round_num += 1
 
-        # Neue Gems spawnen
         if round_num % 3 == 0:
             spawn_gems(gems, 1)
 
-        # Gems fallen lassen wenn Spieler stirbt (wird unten behandelt)
+        # Temp-Wände herunter zählen
+        expired = [k for k, v in temp_walls.items() if v <= 0]
+        for k in expired:
+            del temp_walls[k]
+        for k in temp_walls:
+            temp_walls[k] -= 1
+
+        # Bomben zünden
+        bomb_logs = []
+        for b in list(bombs):
+            b['timer'] -= 1
+            if b['timer'] <= 0:
+                br, bc = b['pos']
+                bomb_logs.append(f"💥 EXPLOSION bei {br+1},{bc+1}!")
+                for e in all_entities:
+                    if not e['alive']:
+                        continue
+                    if dist(e['pos'], b['pos']) <= b['radius']:
+                        e['hp'] -= b['dmg']
+                        bomb_logs.append(f"   {e['name']} trifft für {b['dmg']}!")
+                        if e['hp'] <= 0:
+                            e['alive'] = False
+                            bomb_logs.append(f"   💀 {e['name']} ausgeschaltet!")
+                bombs.remove(b)
+
+        # Berserk runterzählen
+        if player.get('berserk_turns', 0) > 0:
+            player['berserk_turns'] -= 1
+
         blue_gems = player['gems']
         red_gems = sum(e['gems'] for e in enemies)
 
         clear()
         print(f"  ⚡ BRAWL TERMINAL  |  Runde {round_num}  |  Gem Grab: Erst zu {GEM_WIN} 💎 gewinnt!")
-        draw_arena(all_entities, gems, dropped_gems)
+        draw_arena(all_entities, gems, dropped_gems, temp_walls, bombs)
         draw_hud(player, enemies, blue_gems, red_gems)
 
-        # Sieg prüfen
+        if bomb_logs:
+            for l in bomb_logs:
+                print(f"  {l}")
+            input("  [Enter]...")
+
         if blue_gems >= GEM_WIN:
             print(f"  🏆 \033[94mDU GEWINNST!\033[0m {player['name']} hat {blue_gems} Gems gesammelt!\n")
             break
@@ -421,37 +511,32 @@ def main():
         if not player['alive']:
             print(f"  💀 \033[91mDU WURDEST AUSGESCHALTET!\033[0m\n")
             break
-        all_alive = [e for e in enemies if e['alive']]
-        if not all_alive:
+        if not any(e['alive'] for e in enemies):
             print(f"  🏆 \033[94mALLE GEGNER BESIEGT!\033[0m Du gewinnst!\n")
             break
 
-        # Spieler-Zug
-        logs = player_turn(player, enemies, gems, dropped_gems, all_entities)
+        logs = player_turn(player, enemies, gems, dropped_gems, all_entities, temp_walls, bombs)
 
-        # Gems fallen lassen wenn Spieler stirbt
         if not player['alive']:
             for _ in range(player['gems']):
                 pr, pc = player['pos']
-                dropped_gems.add((pr + random.randint(-1,1), pc + random.randint(-1,1)))
+                dropped_gems.add((max(0,min(ROWS-1,pr+random.randint(-1,1))),
+                                  max(0,min(COLS-1,pc+random.randint(-1,1)))))
             player['gems'] = 0
 
-        # KI-Züge
         ai_logs = []
         for e in enemies:
             ai_move(e, player, gems, all_entities, dropped_gems, ai_logs)
-            # Gegner-Gems fallen lassen wenn besiegt
             if not e['alive'] and e['gems'] > 0:
                 for _ in range(e['gems']):
                     er, ec = e['pos']
-                    pos = (max(0,min(ROWS-1, er+random.randint(-1,1))),
-                           max(0,min(COLS-1, ec+random.randint(-1,1))))
-                    dropped_gems.add(pos)
+                    dropped_gems.add((max(0,min(ROWS-1,er+random.randint(-1,1))),
+                                      max(0,min(COLS-1,ec+random.randint(-1,1)))))
                 e['gems'] = 0
 
         clear()
         print(f"  ⚡ BRAWL TERMINAL  |  Runde {round_num}")
-        draw_arena(all_entities, gems, dropped_gems)
+        draw_arena(all_entities, gems, dropped_gems, temp_walls, bombs)
         draw_hud(player, enemies, player['gems'], sum(e['gems'] for e in enemies))
 
         if logs:
