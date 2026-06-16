@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dog Fight RPG</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0f0f1a;
+    color: #e0e0ff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 700px;
+    padding: 16px;
+    position: relative;
+  }
+
+  /* ---- SELECTION SCREEN ---- */
+  #selection-screen h1 {
+    text-align: center;
+    font-size: 2.2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+    text-shadow: none;
+  }
+  #selection-screen .subtitle {
+    text-align: center;
+    color: #7c7caa;
+    margin-bottom: 28px;
+    font-size: 0.95rem;
+  }
+
+  .dog-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .dog-card {
+    background: linear-gradient(145deg, #1a1a2e, #16213e);
+    border: 2px solid #2a2a4a;
+    border-radius: 16px;
+    padding: 20px 16px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .dog-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(167,139,250,0.08), rgba(96,165,250,0.08));
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .dog-card:hover { border-color: #a78bfa; transform: translateY(-3px); box-shadow: 0 8px 32px rgba(167,139,250,0.25); }
+  .dog-card:hover::before { opacity: 1; }
+
+  .dog-card .emoji { font-size: 3.2rem; display: block; margin-bottom: 8px; }
+  .dog-card .dog-name { font-size: 1.2rem; font-weight: 700; color: #c4b5fd; margin-bottom: 12px; }
+  .dog-card .stats { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: #9090bb; }
+  .dog-card .stat-row { display: flex; justify-content: space-between; align-items: center; }
+  .dog-card .stat-label { color: #7070aa; }
+  .dog-card .stat-val { color: #e0e0ff; font-weight: 600; }
+  .dog-card .special-tag {
+    margin-top: 12px;
+    background: linear-gradient(90deg, #7c3aed, #4f46e5);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #e0d0ff;
+    display: inline-block;
+  }
+
+  /* ---- COMBAT SCREEN ---- */
+  #combat-screen { display: none; flex-direction: column; gap: 14px; }
+
+  .combat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(145deg, #1a1a2e, #12122a);
+    border: 1px solid #2a2a4a;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    color: #7070aa;
+  }
+  .combat-header .level-badge {
+    background: linear-gradient(90deg, #7c3aed, #4f46e5);
+    color: #fff;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 0.85rem;
+  }
+  .combat-header .kills-badge {
+    color: #f472b6;
+    font-weight: 600;
+  }
+
+  .fighters {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .fighter-card {
+    background: linear-gradient(145deg, #1a1a2e, #16213e);
+    border: 1px solid #2a2a4a;
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+    transition: box-shadow 0.3s;
+  }
+  .fighter-card.player-card { border-color: #4f46e5; }
+  .fighter-card.enemy-card { border-color: #dc2626; }
+
+  .fighter-card .f-emoji { font-size: 2.8rem; display: block; margin-bottom: 4px; transition: transform 0.15s; }
+  .fighter-card .f-name { font-size: 0.8rem; font-weight: 700; color: #a0a0cc; margin-bottom: 8px; }
+
+  .vs-badge {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #f472b6;
+    text-shadow: 0 0 12px rgba(244,114,182,0.6);
+    text-align: center;
+  }
+
+  /* HP BARS */
+  .bar-wrap { margin-bottom: 6px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 0.72rem; color: #6060aa; margin-bottom: 3px; }
+  .bar-bg { background: #0a0a18; border-radius: 6px; height: 10px; overflow: hidden; border: 1px solid #1e1e3a; }
+  .bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .hp-fill-player { background: linear-gradient(90deg, #10b981, #34d399); box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+  .hp-fill-enemy { background: linear-gradient(90deg, #ef4444, #f87171); box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+  .hp-low { background: linear-gradient(90deg, #f59e0b, #fbbf24) !important; }
+  .hp-critical { background: linear-gradient(90deg, #dc2626, #ef4444) !important; box-shadow: 0 0 12px rgba(220,38,38,0.7) !important; }
+  .jewel-fill { background: linear-gradient(90deg, #7c3aed, #a78bfa); box-shadow: 0 0 8px rgba(124,58,237,0.5); }
+  .xp-fill { background: linear-gradient(90deg, #f59e0b, #fbbf24); box-shadow: 0 0 6px rgba(245,158,11,0.4); }
+
+  /* ACTIONS */
+  .action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .action-btn {
+    background: linear-gradient(145deg, #1e1e38, #16213e);
+    border: 1.5px solid #2a2a4a;
+    border-radius: 12px;
+    padding: 12px 10px;
+    cursor: pointer;
+    color: #e0e0ff;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    position: relative;
+    overflow: hidden;
+  }
+  .action-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.05);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .action-btn:hover:not(:disabled)::after { opacity: 1; }
+  .action-btn:hover:not(:disabled) { transform: translateY(-2px); }
+  .action-btn:active:not(:disabled) { transform: translateY(0); }
+  .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .action-btn .btn-name { font-size: 0.95rem; color: #fff; }
+  .action-btn .btn-cost { font-size: 0.72rem; color: #7c7caa; }
+  .action-btn .btn-dmg { font-size: 0.72rem; color: #a0c0ff; }
+
+  .btn-bellen { border-color: #3b82f6; }
+  .btn-bellen:hover:not(:disabled) { border-color: #60a5fa; box-shadow: 0 4px 16px rgba(59,130,246,0.25); }
+  .btn-beissen { border-color: #10b981; }
+  .btn-beissen:hover:not(:disabled) { border-color: #34d399; box-shadow: 0 4px 16px rgba(16,185,129,0.25); }
+  .btn-spezial { border-color: #a78bfa; }
+  .btn-spezial:hover:not(:disabled) { border-color: #c4b5fd; box-shadow: 0 4px 16px rgba(167,139,250,0.3); }
+  .btn-lecken { border-color: #f472b6; }
+  .btn-lecken:hover:not(:disabled) { border-color: #f9a8d4; box-shadow: 0 4px 16px rgba(244,114,182,0.25); }
+
+  .flee-btn {
+    background: transparent;
+    border: 1.5px solid #4a2a2a;
+    border-radius: 10px;
+    padding: 8px;
+    color: #f87171;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .flee-btn:hover { border-color: #ef4444; background: rgba(239,68,68,0.08); }
+
+  /* COMBAT LOG */
+  .combat-log {
+    background: #0a0a18;
+    border: 1px solid #1e1e3a;
+    border-radius: 12px;
+    padding: 10px 14px;
+    min-height: 90px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 0.8rem;
+  }
+  .log-entry { color: #8080aa; line-height: 1.4; }
+  .log-entry.player-action { color: #60a5fa; }
+  .log-entry.enemy-action { color: #f87171; }
+  .log-entry.crit { color: #fbbf24; font-weight: 700; }
+  .log-entry.heal { color: #34d399; }
+  .log-entry.system { color: #c4b5fd; font-style: italic; }
+
+  /* FLASH EFFECT */
+  #flash-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0);
+    pointer-events: none;
+    z-index: 100;
+    transition: background 0.1s;
+  }
+  #flash-overlay.flash { background: rgba(255,220,100,0.18); }
+
+  #sound-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 2rem;
+    font-weight: 900;
+    color: #fbbf24;
+    text-shadow: 0 0 20px rgba(251,191,36,0.8);
+    pointer-events: none;
+    z-index: 101;
+    transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+    opacity: 0;
+  }
+  #sound-popup.show { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+
+  /* LEVEL UP POPUP */
+  #levelup-popup {
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 900;
+    padding: 18px 36px;
+    border-radius: 20px;
+    box-shadow: 0 0 40px rgba(167,139,250,0.6);
+    pointer-events: none;
+    z-index: 102;
+    opacity: 0;
+    transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+    text-align: center;
+  }
+  #levelup-popup.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+
+  /* SHAKE ANIMATION */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  .shake { animation: shake 0.3s ease; }
+
+  /* GAME OVER SCREEN */
+  #gameover-screen {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+    background: linear-gradient(145deg, #1a1a2e, #12122a);
+    border: 1px solid #2a2a4a;
+    border-radius: 20px;
+  }
+  #gameover-screen .go-emoji { font-size: 5rem; display: block; margin-bottom: 16px; }
+  #gameover-screen h2 {
+    font-size: 2.2rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  #gameover-screen .go-sub { color: #6060aa; margin-bottom: 28px; }
+  .go-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .go-stat {
+    background: #0f0f1a;
+    border: 1px solid #2a2a4a;
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .go-stat .gs-label { font-size: 0.75rem; color: #6060aa; margin-bottom: 4px; }
+  .go-stat .gs-val { font-size: 1.4rem; font-weight: 700; color: #c4b5fd; }
+
+  .restart-btn {
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    border: none;
+    border-radius: 14px;
+    padding: 14px 40px;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.4);
+  }
+  .restart-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(124,58,237,0.5); }
+
+  /* XP + Jewel bars in header area */
+  .status-bars {
+    background: linear-gradient(145deg, #1a1a2e, #12122a);
+    border: 1px solid #2a2a4a;
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .enemy-info {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #6060aa;
+    margin-top: 2px;
+  }
+  .enemy-info .enemy-xp { color: #fbbf24; font-weight: 600; }
+
+  /* Waiting / enemy turn */
+  .turn-indicator {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 0;
+    letter-spacing: 0.05em;
+    color: #6060aa;
+  }
+  .turn-indicator.enemy-turn { color: #f87171; }
+  .turn-indicator.player-turn { color: #60a5fa; }
+</style>
+</head>
+<body>
+<div id="flash-overlay"></div>
+<div id="sound-popup">🔊 67</div>
+<div id="levelup-popup">⬆️ Level Up!</div>
+
+<div id="app">
+
+  <!-- SELECTION SCREEN -->
+  <div id="selection-screen">
+    <h1>🐾 Dog Fight RPG</h1>
+    <p class="subtitle">Wähle deinen Kämpfer</p>
+    <div class="dog-cards" id="dog-cards"></div>
+  </div>
+
+  <!-- COMBAT SCREEN -->
+  <div id="combat-screen">
+    <div class="combat-header">
+      <span class="level-badge" id="lvl-badge">Lv 1</span>
+      <div class="turn-indicator player-turn" id="turn-indicator">Dein Zug</div>
+      <span class="kills-badge" id="kills-badge">💀 0 Kills</span>
+    </div>
+
+    <div class="status-bars">
+      <div class="bar-wrap">
+        <div class="bar-label"><span>💎 Juwelen</span><span id="jewel-text">100 / 100</span></div>
+        <div class="bar-bg"><div class="bar-fill jewel-fill" id="jewel-bar" style="width:100%"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>⭐ XP</span><span id="xp-text">0 / 50</span></div>
+        <div class="bar-bg"><div class="bar-fill xp-fill" id="xp-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="fighters">
+      <div class="fighter-card player-card" id="player-card">
+        <span class="f-emoji" id="player-emoji"></span>
+        <div class="f-name" id="player-name"></div>
+        <div class="bar-wrap">
+          <div class="bar-label"><span>HP</span><span id="player-hp-text"></span></div>
+          <div class="bar-bg"><div class="bar-fill hp-fill-player" id="player-hp-bar" style="width:100%"></div></div>
+        </div>
+      </div>
+      <div class="vs-badge">VS</div>
+      <div class="fighter-card enemy-card" id="enemy-card">
+        <span class="f-emoji" id="enemy-emoji"></span>
+        <div class="f-name" id="enemy-name"></div>
+        <div class="bar-wrap">
+          <div class="bar-label"><span>HP</span><span id="enemy-hp-text"></span></div>
+          <div class="bar-bg"><div class="bar-fill hp-fill-enemy" id="enemy-hp-bar" style="width:100%"></div></div>
+        </div>
+        <div class="enemy-info">XP: <span class="enemy-xp" id="enemy-xp-reward"></span></div>
+      </div>
+    </div>
+
+    <div class="action-grid">
+      <button class="action-btn btn-bellen" id="btn-bellen" onclick="doAction('bellen')">
+        <span class="btn-name">🗣️ Bellen</span>
+        <span class="btn-cost">Kostenlos</span>
+        <span class="btn-dmg">6–12 Schaden</span>
+      </button>
+      <button class="action-btn btn-beissen" id="btn-beissen" onclick="doAction('beissen')">
+        <span class="btn-name">🦷 Beißen</span>
+        <span class="btn-cost">💎 10 Juwelen</span>
+        <span class="btn-dmg">12–20 Schaden</span>
+      </button>
+      <button class="action-btn btn-spezial" id="btn-spezial" onclick="doAction('spezial')">
+        <span class="btn-name" id="spezial-name">✨ Spezial</span>
+        <span class="btn-cost">💎 25 Juwelen</span>
+        <span class="btn-dmg" id="spezial-dmg-label"></span>
+      </button>
+      <button class="action-btn btn-lecken" id="btn-lecken" onclick="doAction('lecken')">
+        <span class="btn-name">💚 Lecken</span>
+        <span class="btn-cost">💎 20 Juwelen</span>
+        <span class="btn-dmg">+20 HP heilen</span>
+      </button>
+    </div>
+    <button class="flee-btn" id="flee-btn" onclick="doFlee()">🏃 Fliehen (50% Chance)</button>
+
+    <div class="combat-log" id="combat-log"></div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="gameover-screen">
+    <span class="go-emoji">💀</span>
+    <h2>Game Over</h2>
+    <p class="go-sub" id="go-sub-text"></p>
+    <div class="go-stats">
+      <div class="go-stat"><div class="gs-label">Erreichte Level</div><div class="gs-val" id="go-level"></div></div>
+      <div class="go-stat"><div class="gs-label">Kills</div><div class="gs-val" id="go-kills"></div></div>
+      <div class="go-stat"><div class="gs-label">Gesamt XP</div><div class="gs-val" id="go-xp"></div></div>
+      <div class="go-stat"><div class="gs-label">Hund</div><div class="gs-val" id="go-dog"></div></div>
+    </div>
+    <button class="restart-btn" onclick="restartGame()">🔄 Nochmal spielen</button>
+  </div>
+
+</div>
+
+<script>
+// ---- DATA ----
+const DOGS = [
+  { name: 'Chihuahua', hp: 60,  atk: 8,  special: 'Zittern',    special_min: 18, special_max: 28, emoji: '🐕' },
+  { name: 'Pudel',     hp: 80,  atk: 10, special: 'Fell-Wirbel', special_min: 22, special_max: 32, emoji: '🐩' },
+  { name: 'Schäferhund', hp: 100, atk: 13, special: 'Rudel-Biss', special_min: 28, special_max: 40, emoji: '🐺' },
+  { name: 'Rottweiler', hp: 120, atk: 16, special: 'Ramme',      special_min: 35, special_max: 50, emoji: '🦮' },
+];
+
+const ENEMIES = [
+  { name: 'Dackel',     hp: 20,  atk: 4,  xp: 10,  emoji: '🌭' },
+  { name: 'Mops',       hp: 35,  atk: 7,  xp: 20,  emoji: '🐶' },
+  { name: 'Husky',      hp: 55,  atk: 11, xp: 35,  emoji: '🐕‍🦺' },
+  { name: 'Dobermann',  hp: 75,  atk: 16, xp: 55,  emoji: '🦴' },
+  { name: 'Höllenhund', hp: 120, atk: 24, xp: 100, emoji: '👹' },
+];
+
+// ---- STATE ----
+let state = {};
+
+function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ---- AUDIO ----
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playKillTone() {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 67;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 1.2);
+  } catch(e) {}
+}
+
+// ---- SELECTION SCREEN ----
+function initSelectionScreen() {
+  const container = document.getElementById('dog-cards');
+  container.innerHTML = '';
+  DOGS.forEach((dog, i) => {
+    const card = document.createElement('div');
+    card.className = 'dog-card';
+    card.innerHTML = `
+      <span class="emoji">${dog.emoji}</span>
+      <div class="dog-name">${dog.name}</div>
+      <div class="stats">
+        <div class="stat-row"><span class="stat-label">❤️ HP</span><span class="stat-val">${dog.hp}</span></div>
+        <div class="stat-row"><span class="stat-label">⚔️ ATK</span><span class="stat-val">${dog.atk}</span></div>
+        <div class="stat-row"><span class="stat-label">✨ Spezial</span><span class="stat-val">${dog.special_min}–${dog.special_max}</span></div>
+      </div>
+      <div class="special-tag">✨ ${dog.special}</div>
+    `;
+    card.onclick = () => startGame(i);
+    container.appendChild(card);
+  });
+  document.getElementById('selection-screen').style.display = '';
+  document.getElementById('combat-screen').style.display = 'none';
+  document.getElementById('gameover-screen').style.display = 'none';
+}
+
+// ---- START GAME ----
+function startGame(dogIndex) {
+  const dog = DOGS[dogIndex];
+  state = {
+    dogIndex,
+    playerName: dog.name,
+    playerEmoji: dog.emoji,
+    playerMaxHp: dog.hp,
+    playerHp: dog.hp,
+    playerAtk: dog.atk,
+    playerSpecial: dog.special,
+    playerSpecialMin: dog.special_min,
+    playerSpecialMax: dog.special_max,
+    jewels: 100,
+    xp: 0,
+    xpNext: 50,
+    level: 1,
+    kills: 0,
+    totalXp: 0,
+    playerTurn: true,
+    enemy: null,
+    log: [],
+    busy: false,
+  };
+
+  document.getElementById('selection-screen').style.display = 'none';
+  const cs = document.getElementById('combat-screen');
+  cs.style.display = 'flex';
+  document.getElementById('gameover-screen').style.display = 'none';
+
+  // Setup static labels
+  document.getElementById('player-emoji').textContent = dog.emoji;
+  document.getElementById('player-name').textContent = dog.name;
+  document.getElementById('spezial-name').textContent = `✨ ${dog.special}`;
+  document.getElementById('spezial-dmg-label').textContent = `${dog.special_min}–${dog.special_max} Schaden`;
+
+  spawnEnemy();
+  render();
+}
+
+// ---- SPAWN ENEMY ----
+function spawnEnemy() {
+  const level = state.level;
+  // Weight enemies by level
+  let pool = ENEMIES.filter((_, i) => i <= Math.min(4, Math.floor(level / 2) + 2));
+  if (pool.length === 0) pool = [ENEMIES[0]];
+  const base = pool[rnd(0, pool.length - 1)];
+  const scale = 1 + (level - 1) * 0.12;
+  state.enemy = {
+    name: base.name,
+    emoji: base.emoji,
+    maxHp: Math.round(base.hp * scale),
+    hp: Math.round(base.hp * scale),
+    atk: Math.round(base.atk * scale),
+    xpReward: base.xp,
+  };
+}
+
+// ---- RENDER ----
+function render() {
+  const s = state;
+  // Level / kills
+  document.getElementById('lvl-badge').textContent = `Lv ${s.level}`;
+  document.getElementById('kills-badge').textContent = `💀 ${s.kills} Kills`;
+
+  // Player HP
+  const playerHpPct = clamp(s.playerHp / s.playerMaxHp * 100, 0, 100);
+  document.getElementById('player-hp-text').textContent = `${s.playerHp} / ${s.playerMaxHp}`;
+  const phb = document.getElementById('player-hp-bar');
+  phb.style.width = playerHpPct + '%';
+  phb.className = 'bar-fill ' + (playerHpPct > 50 ? 'hp-fill-player' : playerHpPct > 25 ? 'hp-low' : 'hp-critical');
+
+  // Enemy HP
+  if (s.enemy) {
+    const enemyHpPct = clamp(s.enemy.hp / s.enemy.maxHp * 100, 0, 100);
+    document.getElementById('enemy-emoji').textContent = s.enemy.emoji;
+    document.getElementById('enemy-name').textContent = s.enemy.name;
+    document.getElementById('enemy-hp-text').textContent = `${s.enemy.hp} / ${s.enemy.maxHp}`;
+    document.getElementById('enemy-xp-reward').textContent = s.enemy.xpReward;
+    const ehb = document.getElementById('enemy-hp-bar');
+    ehb.style.width = enemyHpPct + '%';
+    ehb.className = 'bar-fill ' + (enemyHpPct > 50 ? 'hp-fill-enemy' : enemyHpPct > 25 ? 'hp-low' : 'hp-critical');
+  }
+
+  // Jewels
+  const jewPct = clamp(s.jewels / 100 * 100, 0, 100);
+  document.getElementById('jewel-text').textContent = `${s.jewels} / 100`;
+  document.getElementById('jewel-bar').style.width = jewPct + '%';
+
+  // XP
+  const xpPct = clamp(s.xp / s.xpNext * 100, 0, 100);
+  document.getElementById('xp-text').textContent = `${s.xp} / ${s.xpNext}`;
+  document.getElementById('xp-bar').style.width = xpPct + '%';
+
+  // Buttons
+  const disabled = s.busy || !s.playerTurn;
+  document.getElementById('btn-bellen').disabled = disabled;
+  document.getElementById('btn-beissen').disabled = disabled || s.jewels < 10;
+  document.getElementById('btn-spezial').disabled = disabled || s.jewels < 25;
+  document.getElementById('btn-lecken').disabled = disabled || s.jewels < 20 || s.playerHp >= s.playerMaxHp;
+  document.getElementById('flee-btn').disabled = disabled;
+
+  // Turn indicator
+  const ti = document.getElementById('turn-indicator');
+  ti.textContent = s.playerTurn ? 'Dein Zug' : 'Feind greift an...';
+  ti.className = 'turn-indicator ' + (s.playerTurn ? 'player-turn' : 'enemy-turn');
+
+  // Log
+  renderLog();
+}
+
+function renderLog() {
+  const logEl = document.getElementById('combat-log');
+  logEl.innerHTML = '';
+  const entries = state.log.slice(-4);
+  entries.forEach(e => {
+    const div = document.createElement('div');
+    div.className = 'log-entry ' + (e.type || '');
+    div.textContent = e.text;
+    logEl.appendChild(div);
+  });
+}
+
+function addLog(text, type = '') {
+  state.log.push({ text, type });
+}
+
+// ---- CRIT ----
+function calcDmg(min, max) {
+  let dmg = rnd(min, max);
+  let crit = false;
+  if (Math.random() < 0.15) { dmg = Math.round(dmg * 1.5); crit = true; }
+  return { dmg, crit };
+}
+
+// ---- ACTIONS ----
+function doAction(type) {
+  if (state.busy || !state.playerTurn) return;
+
+  let dmg = 0, crit = false, logText = '', logType = 'player-action';
+
+  if (type === 'bellen') {
+    ({ dmg, crit } = calcDmg(6, 12));
+    logText = `${state.playerEmoji} Bellen: ${dmg} Schaden${crit ? ' 💥 KRIT!' : ''}`;
+    logType = crit ? 'crit' : 'player-action';
+  } else if (type === 'beissen') {
+    if (state.jewels < 10) return;
+    state.jewels -= 10;
+    ({ dmg, crit } = calcDmg(12, 20));
+    logText = `${state.playerEmoji} Beißen: ${dmg} Schaden${crit ? ' 💥 KRIT!' : ''}`;
+    logType = crit ? 'crit' : 'player-action';
+  } else if (type === 'spezial') {
+    if (state.jewels < 25) return;
+    state.jewels -= 25;
+    ({ dmg, crit } = calcDmg(state.playerSpecialMin, state.playerSpecialMax));
+    logText = `${state.playerEmoji} ${state.playerSpecial}: ${dmg} Schaden${crit ? ' 💥 KRIT!' : ''}`;
+    logType = crit ? 'crit' : 'player-action';
+  } else if (type === 'lecken') {
+    if (state.jewels < 20) return;
+    if (state.playerHp >= state.playerMaxHp) return;
+    state.jewels -= 20;
+    const healed = Math.min(20, state.playerMaxHp - state.playerHp);
+    state.playerHp += healed;
+    addLog(`${state.playerEmoji} Lecken: +${healed} HP geheilt 💚`, 'heal');
+    render();
+    afterPlayerTurn();
+    return;
+  }
+
+  state.enemy.hp = Math.max(0, state.enemy.hp - dmg);
+  addLog(logText, logType);
+  shakeEl('enemy-card');
+  render();
+
+  if (state.enemy.hp <= 0) {
+    handleKill();
+  } else {
+    afterPlayerTurn();
+  }
+}
+
+function doFlee() {
+  if (state.busy || !state.playerTurn) return;
+  if (Math.random() < 0.5) {
+    addLog('🏃 Du bist geflohen!', 'system');
+    state.log = state.log.slice(-4);
+    render();
+    setTimeout(() => {
+      addLog('Ein neuer Feind erscheint...', 'system');
+      spawnEnemy();
+      state.playerTurn = true;
+      state.busy = false;
+      render();
+    }, 800);
+  } else {
+    addLog('🏃 Flucht fehlgeschlagen!', 'enemy-action');
+    render();
+    afterPlayerTurn();
+  }
+}
+
+function afterPlayerTurn() {
+  state.playerTurn = false;
+  state.busy = true;
+  render();
+  setTimeout(() => enemyAttack(), 900);
+}
+
+function enemyAttack() {
+  if (!state.enemy || state.enemy.hp <= 0) return;
+  const baseAtk = state.enemy.atk;
+  const mult = 0.7 + Math.random() * 0.6;
+  let dmg = Math.round(baseAtk * mult);
+  let crit = false;
+  if (Math.random() < 0.15) { dmg = Math.round(dmg * 1.5); crit = true; }
+  dmg = Math.max(1, dmg);
+
+  state.playerHp = Math.max(0, state.playerHp - dmg);
+  // Regen jewels
+  state.jewels = Math.min(100, state.jewels + 15);
+
+  addLog(`${state.enemy.emoji} ${state.enemy.name}: ${dmg} Schaden${crit ? ' 💥 KRIT!' : ''}`, crit ? 'crit' : 'enemy-action');
+  shakeEl('player-card');
+  render();
+
+  if (state.playerHp <= 0) {
+    setTimeout(() => gameOver(), 400);
+    return;
+  }
+
+  state.playerTurn = true;
+  state.busy = false;
+  render();
+}
+
+function handleKill() {
+  state.busy = true;
+  state.kills++;
+  const xpGained = state.enemy.xpReward;
+  state.xp += xpGained;
+  state.totalXp += xpGained;
+
+  addLog(`${state.enemy.emoji} ${state.enemy.name} besiegt! +${xpGained} XP`, 'system');
+
+  // Every 3 kills bonus
+  if (state.kills % 3 === 0) {
+    const bonus = 20;
+    state.playerHp = Math.min(state.playerMaxHp, state.playerHp + bonus);
+    addLog(`🎁 Bonus: +${bonus} HP (3er Kill-Streak!)`, 'heal');
+  }
+
+  // Kill effects
+  flashEffect();
+  showSoundPopup();
+  playKillTone();
+
+  // Check level up
+  let leveledUp = false;
+  while (state.xp >= state.xpNext) {
+    state.xp -= state.xpNext;
+    state.xpNext = Math.round(state.xpNext * 1.5);
+    state.level++;
+    state.playerMaxHp += 20;
+    state.playerHp = Math.min(state.playerMaxHp, state.playerHp + 20);
+    state.playerAtk += 2;
+    leveledUp = true;
+  }
+
+  render();
+
+  if (leveledUp) {
+    showLevelUp(state.level);
+    addLog(`⬆️ Level Up! Lv ${state.level} — HP+20 ATK+2`, 'system');
+  }
+
+  setTimeout(() => {
+    addLog('Ein neuer Feind erscheint...', 'system');
+    spawnEnemy();
+    state.playerTurn = true;
+    state.busy = false;
+    render();
+  }, leveledUp ? 1800 : 1000);
+}
+
+// ---- EFFECTS ----
+function flashEffect() {
+  const overlay = document.getElementById('flash-overlay');
+  overlay.classList.add('flash');
+  setTimeout(() => overlay.classList.remove('flash'), 200);
+}
+
+function showSoundPopup() {
+  const popup = document.getElementById('sound-popup');
+  popup.classList.add('show');
+  setTimeout(() => popup.classList.remove('show'), 900);
+}
+
+function showLevelUp(level) {
+  const popup = document.getElementById('levelup-popup');
+  popup.innerHTML = `⬆️ Level ${level}!<br><span style="font-size:0.8rem;font-weight:400;opacity:0.8">HP+20 · ATK+2</span>`;
+  popup.classList.add('show');
+  setTimeout(() => popup.classList.remove('show'), 1500);
+}
+
+function shakeEl(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+  setTimeout(() => el.classList.remove('shake'), 350);
+}
+
+// ---- GAME OVER ----
+function gameOver() {
+  document.getElementById('combat-screen').style.display = 'none';
+  const go = document.getElementById('gameover-screen');
+  go.style.display = 'block';
+  document.getElementById('go-sub-text').textContent = `${state.playerEmoji} ${state.playerName} wurde besiegt!`;
+  document.getElementById('go-level').textContent = state.level;
+  document.getElementById('go-kills').textContent = state.kills;
+  document.getElementById('go-xp').textContent = state.totalXp;
+  document.getElementById('go-dog').textContent = `${state.playerEmoji} ${state.playerName}`;
+}
+
+function restartGame() {
+  document.getElementById('gameover-screen').style.display = 'none';
+  initSelectionScreen();
+}
+
+// ---- INIT ----
+initSelectionScreen();
+</script>
+</body>
+</html>

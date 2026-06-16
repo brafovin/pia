@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chaos Tic Tac Toe</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0f0f1a;
+    color: #e2e8f0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ef4444, #a855f7, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    margin-bottom: 24px;
+  }
+
+  /* === SETUP SCREEN === */
+  #setup-screen {
+    background: #1a1a2e;
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    border: 1px solid #2d2d4e;
+  }
+
+  .player-setup {
+    margin-bottom: 20px;
+  }
+
+  .player-setup label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .player-setup label.x-label { color: #ef4444; }
+  .player-setup label.o-label { color: #3b82f6; }
+
+  .player-setup input {
+    width: 100%;
+    padding: 10px 14px;
+    background: #0f0f1a;
+    border: 2px solid #2d2d4e;
+    border-radius: 8px;
+    color: #e2e8f0;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .player-setup input:focus { border-color: #6d28d9; }
+
+  #start-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #6d28d9, #4f46e5);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 8px;
+  }
+  #start-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  #start-btn:active { transform: translateY(0); }
+
+  /* === GAME SCREEN === */
+  #game-screen { display: none; width: 100%; max-width: 640px; }
+
+  /* Turn banner */
+  #turn-banner {
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 14px 20px;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    border: 2px solid #2d2d4e;
+    transition: border-color 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  #turn-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.08;
+    transition: background 0.3s;
+  }
+  #turn-banner.x-turn { border-color: #ef4444; }
+  #turn-banner.x-turn::before { background: #ef4444; }
+  #turn-banner.o-turn { border-color: #3b82f6; }
+  #turn-banner.o-turn::before { background: #3b82f6; }
+
+  .turn-indicator {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+    animation: pulse 1.2s infinite;
+  }
+  .x-turn .turn-indicator { background: #ef4444; }
+  .o-turn .turn-indicator { background: #3b82f6; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  /* Status message */
+  #status-msg {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    min-height: 20px;
+    margin-bottom: 10px;
+    font-style: italic;
+  }
+  #status-msg.active-special {
+    color: #a855f7;
+    font-style: normal;
+    font-weight: 600;
+    animation: glow-text 1s infinite alternate;
+  }
+  @keyframes glow-text {
+    from { text-shadow: 0 0 4px #a855f750; }
+    to { text-shadow: 0 0 12px #a855f7; }
+  }
+
+  /* Board */
+  #board-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    width: min(100%, 400px);
+  }
+
+  .cell {
+    aspect-ratio: 1;
+    background: #1a1a2e;
+    border: 2px solid #2d2d4e;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    user-select: none;
+    position: relative;
+  }
+  .cell:hover:not(.blocked):not(.no-hover) {
+    border-color: #6d28d9;
+    background: #22203a;
+    transform: scale(1.04);
+  }
+  .cell.x-cell {
+    color: #ef4444;
+    border-color: #ef444460;
+    background: #1f1212;
+  }
+  .cell.o-cell {
+    color: #3b82f6;
+    border-color: #3b82f660;
+    background: #111827;
+  }
+  .cell.blocked {
+    color: #4b5563;
+    background: #161620;
+    border-color: #374151;
+    cursor: not-allowed;
+    font-size: 1.2rem;
+  }
+  .cell.selected-swap {
+    border-color: #a855f7 !important;
+    background: #1e1030 !important;
+    box-shadow: 0 0 12px #a855f780;
+    animation: selected-pulse 0.8s infinite alternate;
+  }
+  @keyframes selected-pulse {
+    from { box-shadow: 0 0 6px #a855f760; }
+    to { box-shadow: 0 0 18px #a855f7; }
+  }
+  .cell.winning {
+    background: #1a1500 !important;
+    border-color: #f59e0b !important;
+    color: #f59e0b !important;
+    animation: win-glow 0.7s infinite alternate;
+  }
+  @keyframes win-glow {
+    from { box-shadow: 0 0 8px #f59e0b60; }
+    to { box-shadow: 0 0 22px #f59e0b; }
+  }
+
+  /* Panels */
+  .players-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .player-panel {
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 14px;
+    border: 2px solid #2d2d4e;
+    transition: border-color 0.3s;
+  }
+  .player-panel.active-panel.x-panel { border-color: #ef4444; }
+  .player-panel.active-panel.o-panel { border-color: #3b82f6; }
+
+  .panel-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .x-panel .panel-header { color: #ef4444; }
+  .o-panel .panel-header { color: #3b82f6; }
+
+  .player-symbol {
+    font-size: 1rem;
+    font-weight: 900;
+  }
+
+  .special-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 7px 10px;
+    background: #0f0f1a;
+    border: 1.5px solid #2d2d4e;
+    border-radius: 8px;
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 6px;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .special-btn:last-child { margin-bottom: 0; }
+  .special-btn:hover:not(:disabled) {
+    border-color: #6d28d9;
+    background: #1a1030;
+    color: #e2e8f0;
+  }
+  .special-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .special-btn.active-btn {
+    border-color: #a855f7;
+    background: #1e1030;
+    color: #c084fc;
+    box-shadow: 0 0 10px #a855f760;
+    animation: btn-pulse 0.9s infinite alternate;
+  }
+  @keyframes btn-pulse {
+    from { box-shadow: 0 0 6px #a855f740; }
+    to { box-shadow: 0 0 16px #a855f7; }
+  }
+  .special-count {
+    margin-left: auto;
+    background: #2d2d4e;
+    padding: 1px 7px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+  .special-btn.active-btn .special-count {
+    background: #4c1d95;
+    color: #e9d5ff;
+  }
+
+  /* Game over overlay */
+  #game-over {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+  }
+  #game-over.show { display: flex; }
+
+  .game-over-card {
+    background: #1a1a2e;
+    border-radius: 20px;
+    padding: 40px 32px;
+    text-align: center;
+    border: 2px solid #2d2d4e;
+    max-width: 360px;
+    width: 90%;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+    animation: pop-in 0.35s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes pop-in {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .game-over-emoji { font-size: 3.5rem; margin-bottom: 12px; }
+  .game-over-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+  .game-over-sub { color: #94a3b8; font-size: 0.9rem; margin-bottom: 28px; }
+
+  .game-over-btns { display: flex; gap: 10px; justify-content: center; }
+
+  .btn-replay, .btn-newgame {
+    padding: 11px 22px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn-replay:hover, .btn-newgame:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-replay {
+    background: linear-gradient(135deg, #6d28d9, #4f46e5);
+    color: white;
+  }
+  .btn-newgame {
+    background: #2d2d4e;
+    color: #e2e8f0;
+  }
+
+  /* Cursor during special */
+  body.special-active { cursor: crosshair; }
+  body.special-active .cell:not(.no-hover):not(:disabled) { cursor: crosshair; }
+
+  /* Responsive */
+  @media (max-width: 500px) {
+    #board { gap: 4px; }
+    .cell { font-size: 1.3rem; border-radius: 7px; }
+    .players-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .player-panel { padding: 10px; }
+    .special-btn { font-size: 0.72rem; padding: 6px 8px; }
+    h1 { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setup-screen">
+  <h1>Chaos TTT</h1>
+  <p class="subtitle">Tic Tac Toe — 5×5 — 4 in a Row</p>
+  <div class="player-setup">
+    <label class="x-label">✕ Spieler 1 (X)</label>
+    <input id="name-x" type="text" placeholder="Name eingeben…" value="Spieler 1" maxlength="20">
+  </div>
+  <div class="player-setup">
+    <label class="o-label">○ Spieler 2 (O)</label>
+    <input id="name-o" type="text" placeholder="Name eingeben…" value="Spieler 2" maxlength="20">
+  </div>
+  <button id="start-btn">Spiel starten 🎮</button>
+</div>
+
+<!-- GAME -->
+<div id="game-screen">
+  <h1>Chaos TTT</h1>
+
+  <div id="turn-banner" class="x-turn">
+    <span class="turn-indicator"></span>
+    <span id="turn-text">Spieler 1 ist dran</span>
+  </div>
+
+  <div id="status-msg">Wähle ein Feld oder eine Sonderfähigkeit</div>
+
+  <div class="players-row">
+    <!-- X Panel -->
+    <div class="player-panel x-panel active-panel" id="panel-x">
+      <div class="panel-header">
+        <span class="player-symbol" style="color:#ef4444">✕</span>
+        <span id="pname-x">Spieler 1</span>
+      </div>
+      <button class="special-btn" id="btn-bomb-x" data-player="x" data-type="bomb">
+        💣 Bombe <span class="special-count" id="count-bomb-x">3</span>
+      </button>
+      <button class="special-btn" id="btn-swap-x" data-player="x" data-type="swap">
+        🔄 Tausch <span class="special-count" id="count-swap-x">2</span>
+      </button>
+      <button class="special-btn" id="btn-block-x" data-player="x" data-type="block">
+        🚫 Block <span class="special-count" id="count-block-x">2</span>
+      </button>
+    </div>
+    <!-- O Panel -->
+    <div class="player-panel o-panel" id="panel-o">
+      <div class="panel-header">
+        <span class="player-symbol" style="color:#3b82f6">○</span>
+        <span id="pname-o">Spieler 2</span>
+      </div>
+      <button class="special-btn" id="btn-bomb-o" data-player="o" data-type="bomb" disabled>
+        💣 Bombe <span class="special-count" id="count-bomb-o">3</span>
+      </button>
+      <button class="special-btn" id="btn-swap-o" data-player="o" data-type="swap" disabled>
+        🔄 Tausch <span class="special-count" id="count-swap-o">2</span>
+      </button>
+      <button class="special-btn" id="btn-block-o" data-player="o" data-type="block" disabled>
+        🚫 Block <span class="special-count" id="count-block-o">2</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="board-wrap">
+    <div id="board"></div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="game-over">
+  <div class="game-over-card">
+    <div class="game-over-emoji" id="go-emoji">🏆</div>
+    <div class="game-over-title" id="go-title">Spieler 1 gewinnt!</div>
+    <div class="game-over-sub" id="go-sub">4 in einer Reihe!</div>
+    <div class="game-over-btns">
+      <button class="btn-replay" id="btn-replay">🔁 Nochmal</button>
+      <button class="btn-newgame" id="btn-newgame">🏠 Neue Namen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const SIZE = 5;
+const WIN = 4;
+
+let names = { x: 'Spieler 1', o: 'Spieler 2' };
+let board = [];          // 'x','o','','blocked'
+let blockTimers = [];    // number: rounds left blocked, or 0
+let current = 'x';      // 'x' or 'o'
+let moveCount = 0;
+
+let specials = {
+  x: { bomb: 3, swap: 2, block: 2 },
+  o: { bomb: 3, swap: 2, block: 2 }
+};
+
+let activeSpecial = null;  // { player, type } or null
+let swapFirst = null;      // index of first swap cell
+
+// ─── DOM REFS ─────────────────────────────────────────────────────────────────
+const setupScreen = document.getElementById('setup-screen');
+const gameScreen  = document.getElementById('game-screen');
+const boardEl     = document.getElementById('board');
+const turnBanner  = document.getElementById('turn-banner');
+const turnText    = document.getElementById('turn-text');
+const statusMsg   = document.getElementById('status-msg');
+const gameOver    = document.getElementById('game-over');
+const goEmoji     = document.getElementById('go-emoji');
+const goTitle     = document.getElementById('go-title');
+const goSub       = document.getElementById('go-sub');
+
+// ─── SETUP ───────────────────────────────────────────────────────────────────
+document.getElementById('start-btn').addEventListener('click', () => {
+  const nx = document.getElementById('name-x').value.trim() || 'Spieler 1';
+  const no = document.getElementById('name-o').value.trim() || 'Spieler 2';
+  names.x = nx; names.o = no;
+  document.getElementById('pname-x').textContent = nx;
+  document.getElementById('pname-o').textContent = no;
+  setupScreen.style.display = 'none';
+  gameScreen.style.display = 'block';
+  initGame();
+});
+
+document.getElementById('btn-replay').addEventListener('click', () => {
+  gameOver.classList.remove('show');
+  initGame();
+});
+
+document.getElementById('btn-newgame').addEventListener('click', () => {
+  gameOver.classList.remove('show');
+  gameScreen.style.display = 'none';
+  setupScreen.style.display = 'block';
+});
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function initGame() {
+  board       = Array(SIZE * SIZE).fill('');
+  blockTimers = Array(SIZE * SIZE).fill(0);
+  current     = 'x';
+  moveCount   = 0;
+  activeSpecial = null;
+  swapFirst     = null;
+
+  specials = {
+    x: { bomb: 3, swap: 2, block: 2 },
+    o: { bomb: 3, swap: 2, block: 2 }
+  };
+
+  document.body.classList.remove('special-active');
+  renderBoard();
+  updateUI();
+  updateSpecialButtons();
+}
+
+// ─── BOARD RENDER ────────────────────────────────────────────────────────────
+function renderBoard(winCells = []) {
+  boardEl.innerHTML = '';
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.index = i;
+
+    const v = board[i];
+    if (v === 'blocked') {
+      cell.classList.add('blocked');
+      cell.textContent = '▓';
+    } else if (v === 'x') {
+      cell.classList.add('x-cell');
+      cell.textContent = '✕';
+    } else if (v === 'o') {
+      cell.classList.add('o-cell');
+      cell.textContent = '○';
+    } else {
+      cell.textContent = '';
+    }
+
+    if (winCells.includes(i)) {
+      cell.classList.add('winning');
+    }
+    if (swapFirst === i) {
+      cell.classList.add('selected-swap');
+    }
+
+    cell.addEventListener('click', () => onCellClick(i));
+    boardEl.appendChild(cell);
+  }
+}
+
+// ─── UI UPDATE ────────────────────────────────────────────────────────────────
+function updateUI() {
+  const isX = current === 'x';
+  turnBanner.className = isX ? 'x-turn' : 'o-turn';
+  turnText.textContent = `${names[current]} ist dran`;
+
+  document.getElementById('panel-x').classList.toggle('active-panel', isX);
+  document.getElementById('panel-o').classList.toggle('active-panel', !isX);
+
+  if (!activeSpecial) {
+    statusMsg.textContent = 'Wähle ein Feld oder eine Sonderfähigkeit';
+    statusMsg.className = '';
+  }
+}
+
+function updateSpecialButtons() {
+  ['x','o'].forEach(p => {
+    const isActive = current === p && !activeSpecial;
+    ['bomb','swap','block'].forEach(type => {
+      const btn = document.getElementById(`btn-${type}-${p}`);
+      const count = specials[p][type];
+      document.getElementById(`count-${type}-${p}`).textContent = count;
+      btn.disabled = !isActive || count === 0;
+      btn.classList.remove('active-btn');
+    });
+  });
+
+  if (activeSpecial) {
+    const { player, type } = activeSpecial;
+    const btn = document.getElementById(`btn-${type}-${player}`);
+    btn.classList.add('active-btn');
+    btn.disabled = false; // keep clickable to cancel
+  }
+}
+
+function setStatus(msg, isSpecial = false) {
+  statusMsg.textContent = msg;
+  statusMsg.className = isSpecial ? 'active-special' : '';
+}
+
+// ─── SPECIAL BUTTON CLICKS ───────────────────────────────────────────────────
+document.querySelectorAll('.special-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const { player, type } = btn.dataset;
+    if (player !== current) return;
+
+    // Toggle off if same
+    if (activeSpecial && activeSpecial.player === player && activeSpecial.type === type) {
+      cancelSpecial();
+      return;
+    }
+
+    activeSpecial = { player, type };
+    swapFirst = null;
+    document.body.classList.add('special-active');
+
+    const msgs = {
+      bomb: `💣 Bombe: Klicke ein Feld von ${names[opponent()]}`,
+      swap: `🔄 Tausch: Klicke dein erstes eigenes Feld`,
+      block: `🚫 Block: Klicke ein leeres Feld zum Blockieren`
+    };
+    setStatus(msgs[type], true);
+    updateSpecialButtons();
+  });
+});
+
+function cancelSpecial() {
+  activeSpecial = null;
+  swapFirst = null;
+  document.body.classList.remove('special-active');
+  updateUI();
+  updateSpecialButtons();
+  renderBoard();
+}
+
+function opponent() {
+  return current === 'x' ? 'o' : 'x';
+}
+
+// ─── CELL CLICK ──────────────────────────────────────────────────────────────
+function onCellClick(idx) {
+  if (activeSpecial) {
+    handleSpecialClick(idx);
+  } else {
+    handleNormalClick(idx);
+  }
+}
+
+function handleNormalClick(idx) {
+  if (board[idx] !== '') return; // occupied or blocked
+  board[idx] = current;
+  endMove();
+}
+
+function handleSpecialClick(idx) {
+  const { player, type } = activeSpecial;
+
+  if (type === 'bomb') {
+    // Must click an enemy cell
+    if (board[idx] !== opponent()) {
+      setStatus(`💣 Klicke ein Feld von ${names[opponent()]}!`, true);
+      return;
+    }
+    board[idx] = '';
+    specials[player].bomb--;
+    cancelSpecial();
+    endMove();
+
+  } else if (type === 'swap') {
+    // Click own cells to swap
+    if (swapFirst === null) {
+      if (board[idx] !== current) {
+        setStatus(`🔄 Klicke dein eigenes Feld (erstes)`, true);
+        return;
+      }
+      swapFirst = idx;
+      renderBoard();
+      setStatus(`🔄 Tausch: Klicke dein zweites eigenes Feld`, true);
+    } else {
+      if (idx === swapFirst) {
+        // Deselect
+        swapFirst = null;
+        renderBoard();
+        setStatus(`🔄 Tausch: Klicke dein erstes eigenes Feld`, true);
+        return;
+      }
+      if (board[idx] !== current) {
+        setStatus(`🔄 Klicke ein weiteres eigenes Feld (zweites)`, true);
+        return;
+      }
+      // Swap positions
+      const tmp = board[swapFirst];
+      board[swapFirst] = board[idx];
+      board[idx] = tmp;
+      specials[player].swap--;
+      swapFirst = null;
+      cancelSpecial();
+      endMove();
+    }
+
+  } else if (type === 'block') {
+    if (board[idx] !== '') {
+      setStatus(`🚫 Klicke ein leeres Feld!`, true);
+      return;
+    }
+    board[idx] = 'blocked';
+    blockTimers[idx] = 2; // unblock after 2 half-moves (1 full round)
+    specials[player].block--;
+    cancelSpecial();
+    endMove();
+  }
+}
+
+// ─── MOVE END ────────────────────────────────────────────────────────────────
+function endMove() {
+  moveCount++;
+
+  // Decrement block timers
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    if (board[i] === 'blocked' && blockTimers[i] > 0) {
+      blockTimers[i]--;
+      if (blockTimers[i] === 0) {
+        board[i] = '';
+      }
+    }
+  }
+
+  // Check win
+  const winCells = checkWin();
+  if (winCells) {
+    renderBoard(winCells);
+    showGameOver(current, false);
+    return;
+  }
+
+  // Check draw
+  const empty = board.filter(v => v === '' || v === 'blocked');
+  const playable = board.filter(v => v === '');
+  if (playable.length === 0) {
+    renderBoard();
+    showGameOver(null, true);
+    return;
+  }
+
+  // Switch player
+  current = opponent();
+  updateUI();
+  updateSpecialButtons();
+  renderBoard();
+}
+
+// ─── WIN CHECK ───────────────────────────────────────────────────────────────
+function checkWin() {
+  const dirs = [
+    { dr: 0, dc: 1 },   // horizontal
+    { dr: 1, dc: 0 },   // vertical
+    { dr: 1, dc: 1 },   // diagonal ↘
+    { dr: 1, dc: -1 },  // diagonal ↙
+  ];
+
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const v = board[r * SIZE + c];
+      if (v !== 'x' && v !== 'o') continue;
+      for (const { dr, dc } of dirs) {
+        const cells = [];
+        for (let k = 0; k < WIN; k++) {
+          const nr = r + dr * k;
+          const nc = c + dc * k;
+          if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) break;
+          if (board[nr * SIZE + nc] !== v) break;
+          cells.push(nr * SIZE + nc);
+        }
+        if (cells.length === WIN) return cells;
+      }
+    }
+  }
+  return null;
+}
+
+// ─── GAME OVER ────────────────────────────────────────────────────────────────
+function showGameOver(winner, isDraw) {
+  if (isDraw) {
+    goEmoji.textContent = '🤝';
+    goTitle.textContent = 'Unentschieden!';
+    goSub.textContent = 'Kein Platz mehr — niemand gewinnt.';
+  } else {
+    const color = winner === 'x' ? '#ef4444' : '#3b82f6';
+    goEmoji.textContent = '🏆';
+    goTitle.innerHTML = `<span style="color:${color}">${names[winner]}</span> gewinnt!`;
+    goSub.textContent = '4 in einer Reihe!';
+  }
+  gameOver.classList.add('show');
+}
+</script>
+</body>
+</html>
