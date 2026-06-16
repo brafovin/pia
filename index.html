@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spiele</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f1a;
+      color: #e0e0f0;
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.4rem;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 3rem;
+      font-size: 1rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      max-width: 960px;
+      width: 100%;
+    }
+
+    .card {
+      background: #1a1a2e;
+      border: 1px solid #2d2d4e;
+      border-radius: 16px;
+      padding: 1.8rem;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: #7c3aed;
+    }
+
+    .card-icon { font-size: 2.8rem; margin-bottom: 1rem; }
+
+    .card h2 {
+      font-size: 1.3rem;
+      margin-bottom: 0.5rem;
+      color: #c4b5fd;
+    }
+
+    .card p {
+      font-size: 0.9rem;
+      color: #9ca3af;
+      line-height: 1.6;
+      margin-bottom: 1.2rem;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .tag {
+      background: #2d2d4e;
+      border-radius: 999px;
+      padding: 0.2rem 0.7rem;
+      font-size: 0.75rem;
+      color: #a5b4fc;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #7c3aed22;
+      border: 1px solid #7c3aed55;
+      color: #a78bfa;
+      border-radius: 999px;
+      padding: 0.15rem 0.6rem;
+      font-size: 0.7rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .install {
+      margin-top: 3rem;
+      background: #1a1a2e;
+      border: 1px solid #2d2d4e;
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .install h3 { color: #c4b5fd; margin-bottom: 0.8rem; }
+
+    .install code {
+      display: block;
+      background: #0f0f1a;
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      margin: 0.4rem 0;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: #60a5fa;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎮 Spiele</h1>
+  <p class="subtitle">Terminal-Spiele — lokal ausführbar mit Python 3</p>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-icon">🐾</div>
+      <span class="badge">Python 3</span>
+      <h2>Hundekampf Arena</h2>
+      <p>
+        Wähle deinen Hund und kämpfe in rundenbasierter Arena gegen andere Rassen.
+        Level-System, Juwelen-Energie, Spezialangriffe und Sound-Effekte beim Sieg.
+      </p>
+      <div class="tags">
+        <span class="tag">Rundenbasiert</span>
+        <span class="tag">Level-Up</span>
+        <span class="tag">5 Hunde</span>
+        <span class="tag">🔊 Sound 67</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <span class="badge">Python 3</span>
+      <h2>Chaos Tic Tac Toe</h2>
+      <p>
+        Tic Tac Toe auf 5×5 — 4 in einer Reihe gewinnt. Jeder Spieler hat
+        Sonderzüge: Bombe (löscht Gegnerfeld), Tausch (eigene Felder wechseln),
+        Block (sperrt ein Feld für 1 Runde).
+      </p>
+      <div class="tags">
+        <span class="tag">2 Spieler</span>
+        <span class="tag">5×5 Board</span>
+        <span class="tag">💣 Bombe</span>
+        <span class="tag">🔄 Tausch</span>
+        <span class="tag">🚫 Block</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-icon">⚔️</div>
+      <span class="badge">Python 3</span>
+      <h2>Brawl Terminal</h2>
+      <p>
+        Brawl Stars im Terminal. Gem-Grab-Modus auf 7×11 Arena — sammle 10 Gems.
+        5 Brawler mit einzigartigen Supers: Mauer bauen, Teleport, Berserker,
+        Gem-Diebstahl oder Zeitbombe.
+      </p>
+      <div class="tags">
+        <span class="tag">Gem Grab</span>
+        <span class="tag">5 Brawler</span>
+        <span class="tag">KI-Gegner</span>
+        <span class="tag">⚡ Supers</span>
+        <span class="tag">💣 Zeitbombe</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="install">
+    <h3>▶ Lokal starten</h3>
+    <code>git clone https://github.com/brafovin/pia</code>
+    <code>python3 dog_fight.py</code>
+    <code>python3 chaos_ttt.py</code>
+    <code>python3 brawl_terminal.py</code>
+  </div>
+
+</body>
+</html>
