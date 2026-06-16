@@ -374,6 +374,35 @@
   body.special-active { cursor: crosshair; }
   body.special-active .cell:not(.no-hover):not(:disabled) { cursor: crosshair; }
 
+  /* Mode buttons */
+  .mode-btn {
+    flex: 1;
+    padding: 10px;
+    background: #0f0f1a;
+    border: 2px solid #2d2d4e;
+    border-radius: 9px;
+    color: #94a3b8;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .mode-btn.active {
+    border-color: #6d28d9;
+    background: #1e1030;
+    color: #c084fc;
+  }
+  .ai-badge {
+    display: inline-block;
+    background: #4c1d95;
+    color: #e9d5ff;
+    border-radius: 99px;
+    font-size: .7rem;
+    padding: 1px 8px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
   /* Responsive */
   @media (max-width: 500px) {
     #board { gap: 4px; }
@@ -391,11 +420,17 @@
 <div id="setup-screen">
   <h1>Chaos TTT</h1>
   <p class="subtitle">Tic Tac Toe — 5×5 — 4 in a Row</p>
+
+  <div style="display:flex;gap:8px;margin-bottom:20px">
+    <button class="mode-btn active" id="mode-human" onclick="setMode('human')">👥 Vs. Spieler</button>
+    <button class="mode-btn" id="mode-ai" onclick="setMode('ai')">🤖 Vs. Computer</button>
+  </div>
+
   <div class="player-setup">
     <label class="x-label">✕ Spieler 1 (X)</label>
     <input id="name-x" type="text" placeholder="Name eingeben…" value="Spieler 1" maxlength="20">
   </div>
-  <div class="player-setup">
+  <div class="player-setup" id="p2-setup">
     <label class="o-label">○ Spieler 2 (O)</label>
     <input id="name-o" type="text" placeholder="Name eingeben…" value="Spieler 2" maxlength="20">
   </div>
@@ -471,11 +506,12 @@
 const SIZE = 5;
 const WIN = 4;
 
-let names = { x: 'Spieler 1', o: 'Spieler 2' };
+let names = { x: 'Spieler 1', o: 'Computer 🤖' };
 let board = [];          // 'x','o','','blocked'
 let blockTimers = [];    // number: rounds left blocked, or 0
 let current = 'x';      // 'x' or 'o'
 let moveCount = 0;
+let vsAI = false;
 
 let specials = {
   x: { bomb: 3, swap: 2, block: 2 },
@@ -484,6 +520,7 @@ let specials = {
 
 let activeSpecial = null;  // { player, type } or null
 let swapFirst = null;      // index of first swap cell
+let aiThinking = false;
 
 // ─── DOM REFS ─────────────────────────────────────────────────────────────────
 const setupScreen = document.getElementById('setup-screen');
@@ -497,13 +534,24 @@ const goEmoji     = document.getElementById('go-emoji');
 const goTitle     = document.getElementById('go-title');
 const goSub       = document.getElementById('go-sub');
 
+// ─── MODE TOGGLE ─────────────────────────────────────────────────────────────
+function setMode(mode) {
+  vsAI = (mode === 'ai');
+  document.getElementById('mode-human').classList.toggle('active', !vsAI);
+  document.getElementById('mode-ai').classList.toggle('active', vsAI);
+  const p2setup = document.getElementById('p2-setup');
+  p2setup.style.opacity = vsAI ? '.4' : '1';
+  p2setup.style.pointerEvents = vsAI ? 'none' : '';
+}
+
 // ─── SETUP ───────────────────────────────────────────────────────────────────
 document.getElementById('start-btn').addEventListener('click', () => {
   const nx = document.getElementById('name-x').value.trim() || 'Spieler 1';
-  const no = document.getElementById('name-o').value.trim() || 'Spieler 2';
+  const no = vsAI ? 'Computer 🤖' : (document.getElementById('name-o').value.trim() || 'Spieler 2');
   names.x = nx; names.o = no;
+  const pnameO = document.getElementById('pname-o');
   document.getElementById('pname-x').textContent = nx;
-  document.getElementById('pname-o').textContent = no;
+  pnameO.innerHTML = vsAI ? `${no} <span class="ai-badge">KI</span>` : no;
   setupScreen.style.display = 'none';
   gameScreen.style.display = 'block';
   initGame();
@@ -656,6 +704,7 @@ function opponent() {
 
 // ─── CELL CLICK ──────────────────────────────────────────────────────────────
 function onCellClick(idx) {
+  if (aiThinking || (vsAI && current === 'o')) return;
   if (activeSpecial) {
     handleSpecialClick(idx);
   } else {
@@ -764,6 +813,142 @@ function endMove() {
   updateUI();
   updateSpecialButtons();
   renderBoard();
+
+  // AI turn
+  if (vsAI && current === 'o' && !aiThinking) {
+    aiThinking = true;
+    turnText.textContent = `${names.o} denkt nach…`;
+    setTimeout(() => { aiMove(); aiThinking = false; }, 600);
+  }
+}
+
+// ─── AI ──────────────────────────────────────────────────────────────────────
+function countLine(sym, startIdx, dr, dc) {
+  // Count how many of sym are in a line of WIN starting from startIdx
+  let count = 0, empty = 0;
+  const r0 = Math.floor(startIdx / SIZE), c0 = startIdx % SIZE;
+  for (let k = 0; k < WIN; k++) {
+    const r = r0 + dr*k, c = c0 + dc*k;
+    if (r<0||r>=SIZE||c<0||c>=SIZE) return {count:-99,empty:-99};
+    const v = board[r*SIZE+c];
+    if (v === sym) count++;
+    else if (v === '') empty++;
+    else return {count:-99,empty:-99}; // blocked by opponent
+  }
+  return {count,empty};
+}
+
+function scoreMoves(me, opp) {
+  // Returns array of {idx, score} for empty cells
+  const dirs = [{dr:0,dc:1},{dr:1,dc:0},{dr:1,dc:1},{dr:1,dc:-1}];
+  const scores = Array(SIZE*SIZE).fill(0);
+
+  board.forEach((v, idx) => {
+    if (v !== '') return;
+    const r = Math.floor(idx/SIZE), c = idx%SIZE;
+    dirs.forEach(({dr,dc}) => {
+      // Check in both directions
+      for (let start = -(WIN-1); start <= 0; start++) {
+        const sr = r + dr*start, sc = c + dc*start;
+        const si = sr*SIZE+sc;
+        if (sr<0||sr>=SIZE||sc<0||sc>=SIZE) continue;
+        const {count:mc,empty:me2} = countLine(me, si, dr, dc);
+        const {count:oc,empty:oe} = countLine(opp, si, dr, dc);
+        if (mc >= 0) {
+          // Offensive score
+          if (mc === 3) scores[idx] += 1000;
+          else if (mc === 2) scores[idx] += 50;
+          else if (mc === 1) scores[idx] += 5;
+          else scores[idx] += 1;
+        }
+        if (oc >= 0) {
+          // Defensive score
+          if (oc === 3) scores[idx] += 800;
+          else if (oc === 2) scores[idx] += 40;
+          else if (oc === 1) scores[idx] += 3;
+        }
+      }
+    });
+    // Prefer center area
+    const cr = r - (SIZE-1)/2, cc = c - (SIZE-1)/2;
+    scores[idx] += 2 - Math.sqrt(cr*cr+cc*cc) * 0.5;
+  });
+  return scores;
+}
+
+function aiBestMove() {
+  const scores = scoreMoves('o', 'x');
+  let best = -Infinity, bestIdx = -1;
+  board.forEach((v, i) => {
+    if (v === '' && scores[i] > best) { best = scores[i]; bestIdx = i; }
+  });
+  return bestIdx;
+}
+
+function aiMove() {
+  if (current !== 'o') return;
+
+  const dirs = [{dr:0,dc:1},{dr:1,dc:0},{dr:1,dc:1},{dr:1,dc:-1}];
+
+  // 1. Check if AI can win this turn
+  const winIdx = findWinningMove('o');
+  if (winIdx !== -1) { board[winIdx] = 'o'; endMove(); return; }
+
+  // 2. Check if player is about to win — block or use bomb
+  const blockIdx = findWinningMove('x');
+  if (blockIdx !== -1) {
+    // Use bomb if player has 3 in a row nearby?
+    if (specials.o.bomb > 0 && board[blockIdx] === '') {
+      // Place O there to block
+      board[blockIdx] = 'o'; endMove(); return;
+    }
+    board[blockIdx] = 'o'; endMove(); return;
+  }
+
+  // 3. Use bomb if player has a strong cluster
+  if (specials.o.bomb > 0) {
+    const xCells = board.map((v,i)=>v==='x'?i:-1).filter(i=>i>=0);
+    const scores = scoreMoves('x','o');
+    const maxScore = xCells.reduce((m,i)=>Math.max(m,scores[i]),0);
+    if (maxScore >= 50) {
+      const target = xCells.reduce((a,b)=>scores[a]>scores[b]?a:b);
+      board[target] = '';
+      specials.o.bomb--;
+      endMove(); return;
+    }
+  }
+
+  // 4. Use block if player is building something
+  if (specials.o.block > 0) {
+    const scores = scoreMoves('x','o');
+    const empties = board.map((v,i)=>v===''?i:-1).filter(i=>i>=0);
+    const best = empties.reduce((a,b)=>scores[a]>scores[b]?a:b, empties[0]);
+    if (best !== undefined && scores[best] >= 40) {
+      board[best] = 'blocked';
+      blockTimers[best] = 2;
+      specials.o.block--;
+      endMove(); return;
+    }
+  }
+
+  // 5. Best normal move
+  const idx = aiBestMove();
+  if (idx !== -1) { board[idx] = 'o'; endMove(); return; }
+
+  // fallback: first empty
+  const fb = board.findIndex(v => v === '');
+  if (fb !== -1) { board[fb] = 'o'; endMove(); }
+}
+
+function findWinningMove(sym) {
+  for (let i = 0; i < SIZE*SIZE; i++) {
+    if (board[i] !== '') continue;
+    board[i] = sym;
+    const win = checkWin();
+    board[i] = '';
+    if (win) return i;
+  }
+  return -1;
 }
 
 // ─── WIN CHECK ───────────────────────────────────────────────────────────────
