@@ -6,7 +6,6 @@
   <title>Spiele</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       background: #0f0f1a;
       color: #e0e0f0;
@@ -17,7 +16,6 @@
       align-items: center;
       padding: 3rem 1rem;
     }
-
     h1 {
       font-size: 2.5rem;
       margin-bottom: 0.4rem;
@@ -25,13 +23,7 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-
-    .subtitle {
-      color: #6b7280;
-      margin-bottom: 3rem;
-      font-size: 1rem;
-    }
-
+    .subtitle { color: #6b7280; margin-bottom: 3rem; font-size: 1rem; }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -39,118 +31,61 @@
       max-width: 960px;
       width: 100%;
     }
-
     .card {
       background: #1a1a2e;
       border: 1px solid #2d2d4e;
       border-radius: 16px;
       padding: 1.8rem;
       transition: transform 0.2s, border-color 0.2s;
-    }
-
-    .card:hover {
-      transform: translateY(-4px);
-      border-color: #7c3aed;
-    }
-
-    .card-icon { font-size: 2.8rem; margin-bottom: 1rem; }
-
-    .card h2 {
-      font-size: 1.3rem;
-      margin-bottom: 0.5rem;
-      color: #c4b5fd;
-    }
-
-    .card p {
-      font-size: 0.9rem;
-      color: #9ca3af;
-      line-height: 1.6;
-      margin-bottom: 1.2rem;
-    }
-
-    .tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-    }
-
-    .tag {
-      background: #2d2d4e;
-      border-radius: 999px;
-      padding: 0.2rem 0.7rem;
-      font-size: 0.75rem;
-      color: #a5b4fc;
-    }
-
-    .badge {
-      display: inline-block;
-      background: #7c3aed22;
-      border: 1px solid #7c3aed55;
-      color: #a78bfa;
-      border-radius: 999px;
-      padding: 0.15rem 0.6rem;
-      font-size: 0.7rem;
-      margin-bottom: 0.8rem;
-    }
-
-    .install {
-      margin-top: 3rem;
-      background: #1a1a2e;
-      border: 1px solid #2d2d4e;
-      border-radius: 12px;
-      padding: 1.5rem 2rem;
-      max-width: 520px;
-      width: 100%;
-      text-align: center;
-    }
-
-    .install h3 { color: #c4b5fd; margin-bottom: 0.8rem; }
-
-    .install code {
+      text-decoration: none;
+      color: inherit;
       display: block;
-      background: #0f0f1a;
-      border-radius: 8px;
-      padding: 0.6rem 1rem;
-      margin: 0.4rem 0;
-      font-family: monospace;
-      font-size: 0.9rem;
-      color: #60a5fa;
-      text-align: left;
     }
+    .card:hover { transform: translateY(-4px); border-color: #7c3aed; }
+    .card-icon { font-size: 2.8rem; margin-bottom: 1rem; }
+    .card h2 { font-size: 1.3rem; margin-bottom: 0.5rem; color: #c4b5fd; }
+    .card p { font-size: 0.9rem; color: #9ca3af; line-height: 1.6; margin-bottom: 1.2rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .tag {
+      background: #2d2d4e; border-radius: 999px;
+      padding: 0.2rem 0.7rem; font-size: 0.75rem; color: #a5b4fc;
+    }
+    .play-btn {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.5rem 1.2rem;
+      background: #7c3aed;
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+    .card:hover .play-btn { background: #6d28d9; }
   </style>
 </head>
 <body>
-
   <h1>🎮 Spiele</h1>
-  <p class="subtitle">Terminal-Spiele — lokal ausführbar mit Python 3</p>
+  <p class="subtitle">Klicke auf ein Spiel um es direkt im Browser zu spielen!</p>
 
   <div class="grid">
 
-    <div class="card">
+    <a class="card" href="dog_fight.html">
       <div class="card-icon">🐾</div>
-      <span class="badge">Python 3</span>
       <h2>Hundekampf Arena</h2>
-      <p>
-        Wähle deinen Hund und kämpfe in rundenbasierter Arena gegen andere Rassen.
-        Level-System, Juwelen-Energie, Spezialangriffe und Sound-Effekte beim Sieg.
-      </p>
+      <p>Wähle deinen Hund und kämpfe rundenbasiert gegen andere Rassen. Level-System, Juwelen-Energie, Spezialangriffe und Sound beim Sieg.</p>
       <div class="tags">
         <span class="tag">Rundenbasiert</span>
         <span class="tag">Level-Up</span>
         <span class="tag">5 Hunde</span>
         <span class="tag">🔊 Sound 67</span>
       </div>
-    </div>
+      <div class="play-btn">▶ Spielen</div>
+    </a>
 
-    <div class="card">
+    <a class="card" href="chaos_ttt.html">
       <div class="card-icon">⚡</div>
-      <span class="badge">Python 3</span>
       <h2>Chaos Tic Tac Toe</h2>
-      <p>
-        Tic Tac Toe auf 5×5 — 4 in einer Reihe gewinnt. Jeder Spieler hat
-        Sonderzüge: Bombe (löscht Gegnerfeld), Tausch (eigene Felder wechseln),
-        Block (sperrt ein Feld für 1 Runde).
-      </p>
+      <p>Tic Tac Toe auf 5×5 — 4 in einer Reihe gewinnt. Mit Sonderzügen: Bombe, Tausch und Block. Für 2 Spieler.</p>
       <div class="tags">
         <span class="tag">2 Spieler</span>
         <span class="tag">5×5 Board</span>
@@ -158,17 +93,13 @@
         <span class="tag">🔄 Tausch</span>
         <span class="tag">🚫 Block</span>
       </div>
-    </div>
+      <div class="play-btn">▶ Spielen</div>
+    </a>
 
-    <div class="card">
+    <a class="card" href="brawl_terminal.html">
       <div class="card-icon">⚔️</div>
-      <span class="badge">Python 3</span>
       <h2>Brawl Terminal</h2>
-      <p>
-        Brawl Stars im Terminal. Gem-Grab-Modus auf 7×11 Arena — sammle 10 Gems.
-        5 Brawler mit einzigartigen Supers: Mauer bauen, Teleport, Berserker,
-        Gem-Diebstahl oder Zeitbombe.
-      </p>
+      <p>Brawl Stars im Browser. Gem-Grab-Modus auf 7×11 Arena. 5 Brawler mit einzigartigen Supers: Mauer, Teleport, Berserker, Gem-Diebstahl oder Zeitbombe.</p>
       <div class="tags">
         <span class="tag">Gem Grab</span>
         <span class="tag">5 Brawler</span>
@@ -176,17 +107,9 @@
         <span class="tag">⚡ Supers</span>
         <span class="tag">💣 Zeitbombe</span>
       </div>
-    </div>
+      <div class="play-btn">▶ Spielen</div>
+    </a>
 
   </div>
-
-  <div class="install">
-    <h3>▶ Lokal starten</h3>
-    <code>git clone https://github.com/brafovin/pia</code>
-    <code>python3 dog_fight.py</code>
-    <code>python3 chaos_ttt.py</code>
-    <code>python3 brawl_terminal.py</code>
-  </div>
-
 </body>
 </html>

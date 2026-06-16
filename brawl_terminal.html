@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Brawl Terminal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f0f1a;color:#e0e0f0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:1rem}
+h1{font-size:1.8rem;background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.2rem}
+.sub{color:#6b7280;font-size:.85rem;margin-bottom:1rem}
+
+/* SELECT SCREEN */
+#select-screen{width:100%;max-width:900px}
+.brawler-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-top:1rem}
+.brawler-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:12px;padding:1.2rem;cursor:pointer;transition:all .2s;text-align:center}
+.brawler-card:hover{border-color:#f59e0b;transform:translateY(-3px)}
+.brawler-card .icon{font-size:2.5rem}
+.brawler-card h3{color:#fbbf24;margin:.4rem 0 .3rem}
+.brawler-card .stats{font-size:.75rem;color:#9ca3af;line-height:1.6}
+.brawler-card .super-name{font-size:.8rem;color:#a78bfa;margin-top:.4rem}
+
+/* GAME SCREEN */
+#game-screen{width:100%;max-width:900px;display:none}
+.game-layout{display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap}
+.arena-wrap{flex:0 0 auto}
+#arena{border-collapse:collapse;background:#111122}
+#arena td{width:36px;height:36px;text-align:center;font-size:1.2rem;border:1px solid #1e1e3a;cursor:default;position:relative;transition:background .2s}
+#arena td.wall{background:#2d2d4e;font-size:.8rem}
+#arena td.gem{background:#0d2d1a}
+#arena td.bomb-cell{background:#2d1a0d}
+#arena td.temp-wall{background:#1a1a3e}
+#arena td.highlight{background:#1a2a0d}
+
+.sidebar{flex:1;min-width:220px;display:flex;flex-direction:column;gap:.8rem}
+.panel{background:#1a1a2e;border:1px solid #2d2d4e;border-radius:10px;padding:.9rem}
+.panel h4{color:#fbbf24;font-size:.85rem;margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.05em}
+.brawler-name{font-size:1rem;font-weight:bold;margin-bottom:.4rem}
+.blue-name{color:#60a5fa}
+.red-name{color:#f87171}
+.bar-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;font-size:.78rem}
+.bar-bg{flex:1;height:8px;background:#111;border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .3s}
+.hp-fill{background:#22c55e}
+.jp-fill{background:#a855f7}
+.super-fill{background:#f59e0b}
+.bar-label{color:#6b7280;width:32px;text-align:right;flex-shrink:0}
+.ammo-row{font-size:.9rem;margin:.3rem 0}
+.gem-count{font-size:1.1rem;font-weight:bold}
+
+/* LOG */
+#log{font-size:.78rem;color:#9ca3af;line-height:1.7;max-height:90px;overflow-y:auto}
+#log .log-hit{color:#fbbf24}
+#log .log-die{color:#ef4444}
+#log .log-gem{color:#34d399}
+#log .log-super{color:#a78bfa}
+
+/* CONTROLS */
+.controls{display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:4px;margin:.5rem 0}
+.controls button{background:#1e1e3a;border:1px solid #2d2d4e;color:#e0e0f0;border-radius:6px;font-size:1rem;cursor:pointer;transition:background .15s}
+.controls button:hover{background:#2d2d4e}
+.controls button:active{background:#3d3d5e}
+.controls .blank{background:transparent;border:none;cursor:default}
+.ctrl-super{width:100%;padding:.4rem;background:#7c3aed22;border:1px solid #7c3aed;color:#c4b5fd;border-radius:6px;font-size:.85rem;cursor:pointer;transition:all .2s}
+.ctrl-super:hover:not(:disabled){background:#7c3aed44}
+.ctrl-super:disabled{opacity:.4;cursor:not-allowed}
+.ctrl-super.ready{background:#7c3aed;color:#fff;animation:pulse .8s infinite alternate}
+@keyframes pulse{from{box-shadow:0 0 0 #7c3aed}to{box-shadow:0 0 10px #7c3aed}}
+
+.super-mode-banner{background:#7c3aed33;border:1px solid #7c3aed;border-radius:6px;padding:.4rem .7rem;font-size:.8rem;color:#c4b5fd;margin:.3rem 0;display:none}
+.super-mode-banner.active{display:block}
+
+/* OVERLAY */
+#overlay{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:100}
+#overlay.show{display:flex}
+.overlay-box{background:#1a1a2e;border:2px solid #f59e0b;border-radius:16px;padding:2rem;text-align:center;max-width:340px}
+.overlay-box h2{font-size:1.8rem;margin-bottom:.5rem}
+.overlay-box p{color:#9ca3af;margin:.4rem 0}
+.overlay-box button{margin-top:1rem;padding:.6rem 1.5rem;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer}
+</style>
+</head>
+<body>
+
+<h1>⚡ Brawl Terminal</h1>
+<p class="sub">Gem Grab — Sammle 10 💎 um zu gewinnen!</p>
+
+<!-- SELECT SCREEN -->
+<div id="select-screen">
+  <div style="text-align:center;color:#9ca3af;margin-bottom:.5rem">Wähle deinen Brawler:</div>
+  <div class="brawler-grid" id="brawler-grid"></div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen">
+  <div class="game-layout">
+    <div class="arena-wrap">
+      <table id="arena"></table>
+    </div>
+    <div class="sidebar">
+      <!-- Player -->
+      <div class="panel">
+        <div class="brawler-name blue-name" id="p-name">—</div>
+        <div class="bar-row"><span>❤️</span><div class="bar-bg"><div class="bar-fill hp-fill" id="p-hp-bar" style="width:100%"></div></div><span class="bar-label" id="p-hp-val"></span></div>
+        <div class="bar-row"><span>💎</span><div class="bar-bg"><div class="bar-fill jp-fill" id="p-jp-bar" style="width:100%"></div></div><span class="bar-label" id="p-jp-val"></span></div>
+        <div class="bar-row"><span>⚡</span><div class="bar-bg"><div class="bar-fill super-fill" id="p-sp-bar" style="width:0%"></div></div><span class="bar-label" id="p-sp-val">0%</span></div>
+        <div class="ammo-row" id="p-ammo"></div>
+        <div class="gem-count" id="p-gems">💎 0/10</div>
+      </div>
+
+      <!-- Enemies -->
+      <div class="panel" id="enemies-panel"></div>
+
+      <!-- Gem score -->
+      <div class="panel" style="text-align:center">
+        <div style="font-size:1.4rem" id="score-display">🔵 0 — 0 🔴</div>
+        <div style="color:#6b7280;font-size:.8rem">Runde <span id="round-num">1</span></div>
+      </div>
+
+      <!-- Controls -->
+      <div class="panel">
+        <div class="controls">
+          <button class="blank"></button>
+          <button onclick="move(-1,0)">▲</button>
+          <button class="blank"></button>
+          <button onclick="move(0,-1)">◄</button>
+          <button class="blank"></button>
+          <button onclick="move(0,1)">►</button>
+          <button class="blank"></button>
+          <button onclick="move(1,0)">▼</button>
+          <button class="blank"></button>
+        </div>
+        <button class="ctrl-super" id="super-btn" disabled onclick="activateSuper()">⚡ Super: <span id="super-name">—</span></button>
+        <div class="super-mode-banner" id="super-banner">Klicke ein Zielfeld auf der Arena!</div>
+      </div>
+
+      <!-- Log -->
+      <div class="panel">
+        <h4>Kampflog</h4>
+        <div id="log"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div id="overlay">
+  <div class="overlay-box">
+    <h2 id="ov-title">—</h2>
+    <p id="ov-msg"></p>
+    <button onclick="location.reload()">Nochmal spielen</button>
+  </div>
+</div>
+
+<script>
+const ROWS=7, COLS=11, GEM_WIN=10, MAX_AMMO=3;
+
+const WALLS=new Set(['2,1','2,2','4,1','2,4','2,5','4,5','0,1','0,2','6,1','6,2','0,4','0,5','6,4','6,5']);
+
+const BRAWLERS=[
+  {name:'Shelly',emoji:'🔫',hp:5200,dmg:800,range:5,superName:'Schild-Wand',superType:'wall',desc:'Baut eine temporäre Mauer (3 Runden)'},
+  {name:'Colt',emoji:'🤠',hp:3600,dmg:650,range:7,superName:'Teleport-Schuss',superType:'teleport',desc:'Teleportiert dann schießt sofort'},
+  {name:'Bull',emoji:'🐂',hp:6500,dmg:1600,range:2,superName:'Berserker',superType:'berserk',desc:'2× Schaden für 3 Runden 🔥'},
+  {name:'Poco',emoji:'🎸',hp:4000,dmg:500,range:5,superName:'Gem-Diebstahl',superType:'steal',desc:'Stiehlt 3 Gems vom nächsten Gegner'},
+  {name:'Brock',emoji:'🚀',hp:3000,dmg:950,range:9,superName:'Zeitbombe',superType:'bomb',desc:'Bombe explodiert nächste Runde (4000 Schaden)'},
+];
+const ENEMY_TYPES=[
+  {name:'Rosa',emoji:'🌸',hp:5800,dmg:800,range:3,ai:'aggressive'},
+  {name:'Nita',emoji:'🐻',hp:4000,dmg:900,range:6,ai:'balanced'},
+  {name:'Spike',emoji:'🌵',hp:3400,dmg:1100,range:7,ai:'sniper'},
+];
+
+let player, enemies, gems, droppedGems, tempWalls, bombs, round, superMode, superStep, teleportPos, gameOver;
+
+function makeEntity(base, pos, team){
+  return {...base, maxHp:base.hp, pos:[...pos], team, ammo:MAX_AMMO, ammoTimer:0,
+    superCharge:0, gems:0, alive:true, berserkTurns:0, stunned:0};
+}
+
+function dist(a,b){return Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1]);}
+function inBounds(r,c){return r>=0&&r<ROWS&&c>=0&&c<COLS;}
+function isWall(r,c){return WALLS.has(r+','+c)||tempWalls.has(r+','+c);}
+
+// BUILD SELECT SCREEN
+const grid=document.getElementById('brawler-grid');
+BRAWLERS.forEach((b,i)=>{
+  const card=document.createElement('div');
+  card.className='brawler-card';
+  card.innerHTML=`<div class="icon">${b.emoji}</div><h3>${b.name}</h3>
+    <div class="stats">❤️ ${b.hp} | 🗡️ ${b.dmg}<br>📏 Range ${b.range}</div>
+    <div class="super-name">⚡ ${b.superName}</div>
+    <div style="font-size:.72rem;color:#6b7280;margin-top:.3rem">${b.desc}</div>`;
+  card.onclick=()=>startGame(i);
+  grid.appendChild(card);
+});
+
+function startGame(idx){
+  document.getElementById('select-screen').style.display='none';
+  document.getElementById('game-screen').style.display='block';
+
+  const base=BRAWLERS[idx];
+  player=makeEntity(base,[Math.floor(ROWS/2),1],'blue');
+
+  const eTypes=[...ENEMY_TYPES].sort(()=>Math.random()-.5).slice(0,2);
+  enemies=[
+    makeEntity({...eTypes[0]},[Math.floor(ROWS/2)-1,COLS-2],'red'),
+    makeEntity({...eTypes[1]},[Math.floor(ROWS/2)+1,COLS-2],'red'),
+  ];
+
+  gems=new Set();
+  droppedGems=new Set();
+  tempWalls=new Set();
+  bombs=[];
+  round=1;
+  superMode=false;
+  superStep=0;
+  gameOver=false;
+
+  document.getElementById('p-name').textContent=`${base.emoji} ${base.name}`;
+  document.getElementById('super-name').textContent=base.superName;
+
+  spawnGems(3);
+  buildArena();
+  renderAll();
+}
+
+function spawnGems(n){
+  const mr=Math.floor(ROWS/2), mc=Math.floor(COLS/2);
+  const candidates=[];
+  for(let dr=-2;dr<=2;dr++) for(let dc=-2;dc<=2;dc++){
+    const r=mr+dr,c=mc+dc;
+    if(inBounds(r,c)&&!isWall(r,c)&&!gems.has(r+','+c)&&!droppedGems.has(r+','+c))
+      candidates.push([r,c]);
+  }
+  candidates.sort(()=>Math.random()-.5);
+  candidates.slice(0,n).forEach(([r,c])=>gems.add(r+','+c));
+}
+
+function buildArena(){
+  const tbl=document.getElementById('arena');
+  tbl.innerHTML='';
+  for(let r=0;r<ROWS;r++){
+    const tr=document.createElement('tr');
+    for(let c=0;c<COLS;c++){
+      const td=document.createElement('td');
+      td.id=`c${r}_${c}`;
+      td.onclick=()=>cellClick(r,c);
+      tr.appendChild(td);
+    }
+    tbl.appendChild(tr);
+  }
+}
+
+function cell(r,c){return document.getElementById(`c${r}_${c}`);}
+
+function renderAll(){
+  // clear
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const td=cell(r,c);
+    td.textContent='';
+    td.className='';
+    td.style.background='';
+  }
+  // walls
+  WALLS.forEach(k=>{const[r,c]=k.split(',').map(Number);cell(r,c).textContent='▓';cell(r,c).className='wall';});
+  tempWalls.forEach(k=>{const[r,c]=k.split(',').map(Number);cell(r,c).textContent='🧱';cell(r,c).className='temp-wall';});
+  // bombs
+  bombs.forEach(b=>{const[r,c]=b.pos;if(inBounds(r,c)){cell(r,c).textContent='💣';cell(r,c).className='bomb-cell';}});
+  // gems
+  gems.forEach(k=>{const[r,c]=k.split(',').map(Number);cell(r,c).textContent='💎';cell(r,c).style.background='#0d2d1a';});
+  droppedGems.forEach(k=>{const[r,c]=k.split(',').map(Number);cell(r,c).textContent='✨';});
+  // center mine
+  const mr=Math.floor(ROWS/2),mc=Math.floor(COLS/2);
+  if(!cell(mr,mc).textContent) cell(mr,mc).textContent='⛏';
+
+  // entities
+  const all=[player,...enemies];
+  all.forEach(e=>{
+    if(!e.alive) return;
+    const[r,c]=e.pos;
+    const td=cell(r,c);
+    const icon=e.berserkTurns>0?'🔥':e.emoji;
+    td.textContent=icon;
+    td.style.color=e.team==='blue'?'#60a5fa':'#f87171';
+    td.style.fontSize='1.4rem';
+  });
+
+  updateHUD();
+}
+
+function updateHUD(){
+  const pct=(v,m)=>Math.max(0,Math.min(100,v/m*100))+'%';
+  document.getElementById('p-hp-bar').style.width=pct(player.hp,player.maxHp);
+  document.getElementById('p-hp-val').textContent=Math.max(0,player.hp);
+  document.getElementById('p-jp-bar').style.width=pct(player.ammo,MAX_AMMO);
+  document.getElementById('p-jp-val').textContent=player.ammo+'/'+MAX_AMMO;
+  document.getElementById('p-sp-bar').style.width=player.superCharge+'%';
+  document.getElementById('p-sp-val').textContent=player.superCharge+'%';
+  document.getElementById('p-ammo').textContent='🔵'.repeat(player.ammo)+'⚫'.repeat(MAX_AMMO-player.ammo);
+  document.getElementById('p-gems').textContent='💎 '+player.gems+'/'+GEM_WIN;
+
+  const sb=document.getElementById('super-btn');
+  if(player.superCharge>=100){sb.disabled=false;sb.classList.add('ready');}
+  else{sb.disabled=true;sb.classList.remove('ready');}
+
+  // Enemies panel
+  let html='<h4>Gegner</h4>';
+  enemies.forEach(e=>{
+    html+=`<div style="margin-bottom:.6rem">
+      <div class="brawler-name red-name">${e.emoji} ${e.name}${e.alive?'':' 💀'}</div>`;
+    if(e.alive){
+      const hp=Math.max(0,e.hp);
+      const w=Math.max(0,hp/e.maxHp*100);
+      html+=`<div class="bar-row"><span>❤️</span><div class="bar-bg"><div class="bar-fill hp-fill" style="width:${w}%"></div></div><span class="bar-label">${hp}</span></div>
+      <div style="font-size:.8rem;color:#34d399">💎 ${e.gems}</div>`;
+    }
+    html+='</div>';
+  });
+  document.getElementById('enemies-panel').innerHTML=html;
+
+  const bg=player.gems, rg=enemies.reduce((s,e)=>s+e.gems,0);
+  document.getElementById('score-display').textContent=`🔵 ${bg} — ${rg} 🔴`;
+  document.getElementById('round-num').textContent=round;
+}
+
+function log(msg,cls=''){
+  const d=document.getElementById('log');
+  const p=document.createElement('p');
+  if(cls) p.className=cls;
+  p.textContent=msg;
+  d.appendChild(p);
+  while(d.children.length>6) d.removeChild(d.firstChild);
+  d.scrollTop=d.scrollHeight;
+}
+
+function pickupGems(entity){
+  const k=entity.pos[0]+','+entity.pos[1];
+  if(gems.has(k)){gems.delete(k);entity.gems++;log(`${entity.name} sammelt 💎!`,'log-gem');}
+  if(droppedGems.has(k)){droppedGems.delete(k);entity.gems++;log(`${entity.name} sammelt ✨!`,'log-gem');}
+}
+
+function doShoot(shooter,targetPos,allEntities,dmgOverride){
+  const dmg=(dmgOverride!==undefined?dmgOverride:shooter.dmg)*(shooter.berserkTurns>0?2:1);
+  const d=dist(shooter.pos,targetPos);
+  const rng=shooter.range;
+  if(d>rng) return false;
+  if(isWall(...targetPos)) return false;
+  let hit=false;
+  allEntities.forEach(e=>{
+    if(!e.alive||e.team===shooter.team) return;
+    if(e.pos[0]===targetPos[0]&&e.pos[1]===targetPos[1]){
+      e.hp-=dmg; hit=true;
+      log(`${shooter.name} → ${e.name}: -${dmg}❤️`,'log-hit');
+      if(e.hp<=0){e.alive=false;dropGems(e);log(`💀 ${e.name} ausgeschaltet!`,'log-die');}
+    }
+  });
+  if(hit) shooter.superCharge=Math.min(100,shooter.superCharge+25);
+  return hit;
+}
+
+function dropGems(entity){
+  for(let i=0;i<entity.gems;i++){
+    const[r,c]=entity.pos;
+    const nr=Math.max(0,Math.min(ROWS-1,r+Math.round(Math.random()*2-1)));
+    const nc=Math.max(0,Math.min(COLS-1,c+Math.round(Math.random()*2-1)));
+    droppedGems.add(nr+','+nc);
+  }
+  entity.gems=0;
+}
+
+// PLAYER MOVE
+function move(dr,dc){
+  if(gameOver||superMode) return;
+  const[r,c]=player.pos;
+  const nr=r+dr, nc=c+dc;
+  if(!inBounds(nr,nc)||isWall(nr,nc)) return;
+  const blocked=enemies.some(e=>e.alive&&e.pos[0]===nr&&e.pos[1]===nc);
+  if(blocked) return;
+  player.pos=[nr,nc];
+  pickupGems(player);
+  regenAmmo(player);
+  endPlayerTurn();
+}
+
+function cellClick(r,c){
+  if(gameOver) return;
+
+  if(superMode){
+    handleSuperClick(r,c);
+    return;
+  }
+
+  // Shoot at enemy
+  const target=enemies.find(e=>e.alive&&e.pos[0]===r&&e.pos[1]===c);
+  if(target&&player.ammo>0){
+    doShoot(player,[r,c],[player,...enemies]);
+    player.ammo--;
+    endPlayerTurn();
+  }
+}
+
+function regenAmmo(e){
+  e.ammoTimer++;
+  if(e.ammoTimer>=3&&e.ammo<MAX_AMMO){e.ammo++;e.ammoTimer=0;}
+}
+
+function activateSuper(){
+  if(player.superCharge<100||gameOver) return;
+  const t=player.superType;
+
+  if(t==='steal'){
+    const alive=enemies.filter(e=>e.alive&&e.gems>0);
+    if(alive.length===0){log('Kein Gegner hat Gems!');return;}
+    const tgt=alive.reduce((a,b)=>dist(player.pos,a.pos)<dist(player.pos,b.pos)?a:b);
+    const stolen=Math.min(3,tgt.gems);
+    tgt.gems-=stolen; player.gems+=stolen;
+    log(`🎸 ${stolen} Gems gestohlen von ${tgt.name}!`,'log-super');
+    player.superCharge=0; renderAll(); checkWin();
+    endPlayerTurn(); return;
+  }
+  if(t==='berserk'){
+    player.berserkTurns=3;
+    log('🔥 BERSERKER! 2× Schaden für 3 Runden!','log-super');
+    player.superCharge=0; renderAll();
+    endPlayerTurn(); return;
+  }
+
+  // Modes requiring cell click
+  superMode=true; superStep=0;
+  document.getElementById('super-banner').classList.add('active');
+  if(t==='wall') document.getElementById('super-banner').textContent='Klicke ein leeres Feld für die Mauer:';
+  if(t==='teleport') document.getElementById('super-banner').textContent='Klicke wohin du teleportieren willst:';
+  if(t==='bomb') document.getElementById('super-banner').textContent='Klicke Zielfeld für die Bombe:';
+}
+
+function handleSuperClick(r,c){
+  const t=player.superType;
+
+  if(t==='wall'){
+    if(isWall(r,c)||[player,...enemies].some(e=>e.alive&&e.pos[0]===r&&e.pos[1]===c)) return;
+    tempWalls.add(r+','+c);
+    log(`🧱 Mauer bei ${r+1},${c+1} errichtet (3 Runden)!`,'log-super');
+    player.superCharge=0; endSuperMode(); endPlayerTurn(); return;
+  }
+  if(t==='bomb'){
+    bombs.push({pos:[r,c],timer:1,dmg:4000,radius:1});
+    log(`💣 Bombe bei ${r+1},${c+1} platziert!`,'log-super');
+    player.superCharge=0; endSuperMode(); endPlayerTurn(); return;
+  }
+  if(t==='teleport'){
+    if(superStep===0){
+      if(isWall(r,c)||[player,...enemies].some(e=>e.alive&&e.pos[0]===r&&e.pos[1]===c)) return;
+      teleportPos=[r,c];
+      player.pos=[r,c];
+      superStep=1;
+      document.getElementById('super-banner').textContent='Klicke Ziel zum Schießen:';
+      renderAll(); return;
+    } else {
+      doShoot(player,[r,c],[player,...enemies],undefined);
+      player.superCharge=0; endSuperMode(); endPlayerTurn(); return;
+    }
+  }
+}
+
+function endSuperMode(){
+  superMode=false; superStep=0;
+  document.getElementById('super-banner').classList.remove('active');
+}
+
+function endPlayerTurn(){
+  if(gameOver) return;
+  aiTurns();
+  round++;
+  if(round%3===0) spawnGems(1);
+  tickTempWalls();
+  tickBombs();
+  if(player.berserkTurns>0) player.berserkTurns--;
+  renderAll();
+  checkWin();
+}
+
+function tickTempWalls(){
+  // each round decrease timer — we store them as a plain set, track timers separately
+  // Simple approach: clear after 3 rounds using a counter map
+  if(!tickTempWalls.timers) tickTempWalls.timers=new Map();
+  // add new
+  tempWalls.forEach(k=>{if(!tickTempWalls.timers.has(k)) tickTempWalls.timers.set(k,3);});
+  // decrement
+  tickTempWalls.timers.forEach((v,k)=>{
+    tickTempWalls.timers.set(k,v-1);
+    if(v-1<=0){tempWalls.delete(k);tickTempWalls.timers.delete(k);}
+  });
+}
+
+function tickBombs(){
+  bombs=bombs.filter(b=>{
+    b.timer--;
+    if(b.timer<=0){
+      log(`💥 EXPLOSION bei ${b.pos[0]+1},${b.pos[1]+1}!`,'log-super');
+      [player,...enemies].forEach(e=>{
+        if(!e.alive) return;
+        if(dist(e.pos,b.pos)<=b.radius){
+          e.hp-=b.dmg;
+          log(`${e.name} trifft für ${b.dmg}!`,'log-hit');
+          if(e.hp<=0){e.alive=false;dropGems(e);log(`💀 ${e.name} ausgeschaltet!`,'log-die');}
+        }
+      });
+      return false;
+    }
+    return true;
+  });
+}
+
+function aiTurns(){
+  const all=[player,...enemies];
+  enemies.forEach(e=>{
+    if(!e.alive) return;
+    if(e.stunned>0){e.stunned--;return;}
+    regenAmmo(e);
+    pickupGems(e);
+    const pd=dist(e.pos,player.pos);
+
+    // Shoot if possible
+    if(e.ammo>0&&pd<=e.range&&!isWall(...player.pos)){
+      doShoot(e,player.pos,all);
+      e.ammo--;
+      return;
+    }
+    // Move
+    const[er,ec]=e.pos;
+    const dirs=[[-1,0],[1,0],[0,-1],[0,1]].sort(()=>Math.random()-.5);
+    let moved=false;
+    for(const[dr,dc] of dirs){
+      const nr=er+dr,nc=ec+dc;
+      if(!inBounds(nr,nc)||isWall(nr,nc)) continue;
+      const occ=all.some(x=>x.alive&&x!==e&&x.pos[0]===nr&&x.pos[1]===nc);
+      if(occ) continue;
+      // Choose direction based on AI type
+      if(e.ai==='aggressive'){
+        e.pos=[nr,nc]; pickupGems(e); moved=true; break;
+      } else if(e.ai==='balanced'){
+        // prefer gems
+        const allGems=[...gems,...droppedGems].map(k=>k.split(',').map(Number));
+        if(allGems.length>0){
+          const near=allGems.reduce((a,b)=>dist([er,ec],a)<dist([er,ec],b)?a:b);
+          const wantDr=Math.sign(near[0]-er), wantDc=Math.sign(near[1]-ec);
+          if(dr===wantDr||dc===wantDc){e.pos=[nr,nc];pickupGems(e);moved=true;break;}
+        } else {e.pos=[nr,nc];pickupGems(e);moved=true;break;}
+      } else { // sniper
+        if(pd>e.range){e.pos=[nr,nc];pickupGems(e);moved=true;break;}
+      }
+    }
+    if(!moved){
+      for(const[dr,dc] of dirs){
+        const nr=er+dr,nc=ec+dc;
+        if(!inBounds(nr,nc)||isWall(nr,nc)) continue;
+        const occ=all.some(x=>x.alive&&x!==e&&x.pos[0]===nr&&x.pos[1]===nc);
+        if(!occ){e.pos=[nr,nc];pickupGems(e);break;}
+      }
+    }
+  });
+}
+
+function checkWin(){
+  const bg=player.gems, rg=enemies.reduce((s,e)=>s+e.gems,0);
+  if(bg>=GEM_WIN){showOverlay('🏆 Du gewinnst!',`${player.name} hat ${bg} Gems gesammelt!`);return;}
+  if(rg>=GEM_WIN){showOverlay('💀 Rot gewinnt!',`Die Gegner haben ${rg} Gems.`);return;}
+  if(!player.alive){showOverlay('💀 Ausgeschaltet!','Du wurdest besiegt.');return;}
+  if(!enemies.some(e=>e.alive)){showOverlay('🏆 Alle Gegner besiegt!','Du dominierst die Arena!');return;}
+}
+
+function showOverlay(title,msg){
+  gameOver=true;
+  document.getElementById('ov-title').textContent=title;
+  document.getElementById('ov-msg').textContent=msg;
+  document.getElementById('overlay').classList.add('show');
+}
+
+// Keyboard support
+document.addEventListener('keydown',e=>{
+  if(gameOver) return;
+  const map={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1],
+             w:[-1,0],s:[1,0],a:[0,-1],d:[0,1]};
+  if(map[e.key]){e.preventDefault();move(...map[e.key]);}
+  if(e.key==='q') activateSuper();
+});
+</script>
+</body>
+</html>
