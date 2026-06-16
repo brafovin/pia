@@ -28,7 +28,7 @@ def bar(val, max_val, length=20, char="█"):
 def print_status(player, dog):
     print("─" * 50)
     print(f"  👤 {player['name']:<15} HP: [{bar(player['hp'], player['max_hp'])}] {player['hp']}/{player['max_hp']}")
-    print(f"     Stamina: [{bar(player['stamina'], 100)}] {player['stamina']}/100  |  Level {player['level']}  XP: {player['xp']}/{player['xp_next']}")
+    print(f"     Juwelen: [{bar(player['stamina'], 100)}] {player['stamina']}/100  |  Level {player['level']}  XP: {player['xp']}/{player['xp_next']}")
     print("─" * 50)
     print(f"  {dog['emoji']} {dog['name']:<15} HP: [{bar(dog['hp'], dog['max_hp'])}] {dog['hp']}/{dog['max_hp']}")
     print("─" * 50)
@@ -36,7 +36,7 @@ def print_status(player, dog):
 def print_moves(player):
     print("\n  Was tust du?")
     for key, move in MOVES.items():
-        cost = f"  [{move['cost']} Stamina]" if move['cost'] > 0 else ""
+        cost = f"  [{move['cost']} Juwelen]" if move['cost'] > 0 else ""
         print(f"  [{key}] {move['name']:<18} {move['desc']}{cost}")
     print(f"  [5] Fliehen")
 
@@ -90,7 +90,7 @@ def fight(player, dog):
         elif choice in MOVES:
             move = MOVES[choice]
             if player['stamina'] < move['cost']:
-                log.append(f"Nicht genug Stamina! (Brauchst {move['cost']})")
+                log.append(f"Nicht genug Juwelen! (Brauchst {move['cost']})")
             else:
                 player['stamina'] = max(0, player['stamina'] - move['cost'])
                 if choice == "4":
