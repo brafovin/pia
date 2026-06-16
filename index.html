@@ -1,115 +1,194 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spiele</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎮 Spiele</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       background: #0f0f1a;
       color: #e0e0f0;
       font-family: 'Segoe UI', sans-serif;
-      min-height: 100vh;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .6rem 1rem;
+      background: #12122a;
+      border-bottom: 1px solid #2d2d4e;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    nav .logo {
+      font-size: 1.1rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-right: .5rem;
+      white-space: nowrap;
+    }
+
+    nav button {
+      background: #1a1a2e;
+      border: 1px solid #2d2d4e;
+      color: #9ca3af;
+      border-radius: 8px;
+      padding: .4rem .9rem;
+      font-size: .9rem;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+
+    nav button:hover { border-color: #7c3aed; color: #c4b5fd; }
+
+    nav button.active {
+      background: #7c3aed;
+      border-color: #7c3aed;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* Home screen */
+    #home {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 3rem 1rem;
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 2rem 1rem;
     }
-    h1 {
+
+    #home h1 {
       font-size: 2.5rem;
-      margin-bottom: 0.4rem;
       background: linear-gradient(135deg, #a78bfa, #60a5fa);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    .subtitle { color: #6b7280; margin-bottom: 3rem; font-size: 1rem; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.5rem;
-      max-width: 960px;
-      width: 100%;
+
+    #home p { color: #6b7280; }
+
+    .game-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+      justify-content: center;
+      max-width: 860px;
     }
-    .card {
+
+    .game-card {
       background: #1a1a2e;
       border: 1px solid #2d2d4e;
-      border-radius: 16px;
-      padding: 1.8rem;
-      transition: transform 0.2s, border-color 0.2s;
-      text-decoration: none;
-      color: inherit;
-      display: block;
+      border-radius: 14px;
+      padding: 1.6rem;
+      width: 250px;
+      cursor: pointer;
+      transition: all .2s;
+      text-align: center;
     }
-    .card:hover { transform: translateY(-4px); border-color: #7c3aed; }
-    .card-icon { font-size: 2.8rem; margin-bottom: 1rem; }
-    .card h2 { font-size: 1.3rem; margin-bottom: 0.5rem; color: #c4b5fd; }
-    .card p { font-size: 0.9rem; color: #9ca3af; line-height: 1.6; margin-bottom: 1.2rem; }
-    .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-    .tag {
-      background: #2d2d4e; border-radius: 999px;
-      padding: 0.2rem 0.7rem; font-size: 0.75rem; color: #a5b4fc;
-    }
+
+    .game-card:hover { transform: translateY(-4px); border-color: #7c3aed; }
+    .game-card .icon { font-size: 3rem; margin-bottom: .8rem; }
+    .game-card h2 { color: #c4b5fd; font-size: 1.1rem; margin-bottom: .5rem; }
+    .game-card p { color: #6b7280; font-size: .82rem; line-height: 1.5; margin-bottom: 1rem; }
+
     .play-btn {
       display: inline-block;
-      margin-top: 1rem;
-      padding: 0.5rem 1.2rem;
+      padding: .45rem 1.2rem;
       background: #7c3aed;
       color: #fff;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: bold;
+      border-radius: 7px;
+      font-size: .88rem;
+      font-weight: 600;
     }
-    .card:hover .play-btn { background: #6d28d9; }
+
+    /* Game frames */
+    .game-frame {
+      display: none;
+      flex: 1;
+      width: 100%;
+      border: none;
+    }
+
+    .game-frame.active { display: block; }
   </style>
 </head>
 <body>
+
+<nav>
+  <span class="logo">🎮 Spiele</span>
+  <button onclick="show('home')" id="nav-home" class="active">🏠 Home</button>
+  <button onclick="show('dog')"  id="nav-dog">🐾 Hundekampf</button>
+  <button onclick="show('ttt')"  id="nav-ttt">⚡ Chaos TTT</button>
+  <button onclick="show('brawl')" id="nav-brawl">⚔️ Brawl Terminal</button>
+</nav>
+
+<!-- Home -->
+<div id="home">
   <h1>🎮 Spiele</h1>
-  <p class="subtitle">Klicke auf ein Spiel um es direkt im Browser zu spielen!</p>
-
-  <div class="grid">
-
-    <a class="card" href="dog_fight.html">
-      <div class="card-icon">🐾</div>
+  <p>Wähle ein Spiel und leg direkt los!</p>
+  <div class="game-cards">
+    <div class="game-card" onclick="show('dog')">
+      <div class="icon">🐾</div>
       <h2>Hundekampf Arena</h2>
-      <p>Wähle deinen Hund und kämpfe rundenbasiert gegen andere Rassen. Level-System, Juwelen-Energie, Spezialangriffe und Sound beim Sieg.</p>
-      <div class="tags">
-        <span class="tag">Rundenbasiert</span>
-        <span class="tag">Level-Up</span>
-        <span class="tag">5 Hunde</span>
-        <span class="tag">🔊 Sound 67</span>
-      </div>
-      <div class="play-btn">▶ Spielen</div>
-    </a>
-
-    <a class="card" href="chaos_ttt.html">
-      <div class="card-icon">⚡</div>
+      <p>Wähle deinen Hund und kämpfe rundenbasiert gegen andere Rassen. Mit Level-System, Juwelen und Sound 67!</p>
+      <span class="play-btn">▶ Spielen</span>
+    </div>
+    <div class="game-card" onclick="show('ttt')">
+      <div class="icon">⚡</div>
       <h2>Chaos Tic Tac Toe</h2>
-      <p>Tic Tac Toe auf 5×5 — 4 in einer Reihe gewinnt. Mit Sonderzügen: Bombe, Tausch und Block. Für 2 Spieler.</p>
-      <div class="tags">
-        <span class="tag">2 Spieler</span>
-        <span class="tag">5×5 Board</span>
-        <span class="tag">💣 Bombe</span>
-        <span class="tag">🔄 Tausch</span>
-        <span class="tag">🚫 Block</span>
-      </div>
-      <div class="play-btn">▶ Spielen</div>
-    </a>
-
-    <a class="card" href="brawl_terminal.html">
-      <div class="card-icon">⚔️</div>
+      <p>5×5 Board, 4 in einer Reihe. Mit Bombe, Tausch und Block-Sonderzügen. Für 2 Spieler.</p>
+      <span class="play-btn">▶ Spielen</span>
+    </div>
+    <div class="game-card" onclick="show('brawl')">
+      <div class="icon">⚔️</div>
       <h2>Brawl Terminal</h2>
-      <p>Brawl Stars im Browser. Gem-Grab-Modus auf 7×11 Arena. 5 Brawler mit einzigartigen Supers: Mauer, Teleport, Berserker, Gem-Diebstahl oder Zeitbombe.</p>
-      <div class="tags">
-        <span class="tag">Gem Grab</span>
-        <span class="tag">5 Brawler</span>
-        <span class="tag">KI-Gegner</span>
-        <span class="tag">⚡ Supers</span>
-        <span class="tag">💣 Zeitbombe</span>
-      </div>
-      <div class="play-btn">▶ Spielen</div>
-    </a>
-
+      <p>Gem Grab auf 7×11 Arena. 5 Brawler mit einzigartigen Supers gegen 2 KI-Gegner.</p>
+      <span class="play-btn">▶ Spielen</span>
+    </div>
   </div>
+</div>
+
+<!-- Frames (lazy loaded) -->
+<iframe id="dog"   class="game-frame" src="about:blank"></iframe>
+<iframe id="ttt"   class="game-frame" src="about:blank"></iframe>
+<iframe id="brawl" class="game-frame" src="about:blank"></iframe>
+
+<script>
+  const SRCS = { dog: 'dog_fight.html', ttt: 'chaos_ttt.html', brawl: 'brawl_terminal.html' };
+  const loaded = {};
+
+  function show(id) {
+    // Hide all
+    document.getElementById('home').style.display = 'none';
+    document.querySelectorAll('.game-frame').forEach(f => f.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+
+    if (id === 'home') {
+      document.getElementById('home').style.display = '';
+      document.getElementById('nav-home').classList.add('active');
+      return;
+    }
+
+    // Lazy load iframe
+    const frame = document.getElementById(id);
+    if (!loaded[id]) {
+      frame.src = SRCS[id];
+      loaded[id] = true;
+    }
+    frame.classList.add('active');
+    document.getElementById('nav-' + id).classList.add('active');
+  }
+</script>
 </body>
 </html>
